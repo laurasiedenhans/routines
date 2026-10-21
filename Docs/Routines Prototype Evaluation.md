@@ -1,5 +1,4 @@
 # Routines Prototype Evaluation
-
 Created: October 21, 2026 5:11 PM
 
 ![Screenshot iPhone 17 21.10.2026 at 14.41.24.png](Docs/Screenshot_iPhone_17_21.10.2026_at_14.41.24.png)
