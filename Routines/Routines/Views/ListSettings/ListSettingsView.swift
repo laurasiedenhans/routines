@@ -5,7 +5,8 @@ import RoutineKit
 /// Neue Liste anlegen oder bestehende bearbeiten (Zahnrad oben rechts in der Liste).
 struct ListSettingsView: View {
     enum Mode {
-        case create
+        /// Gleiches Formular für Routinen und Listen, nur passend vorausgewählt.
+        case create(ListKind)
         case edit(RoutineList)
     }
 
@@ -23,10 +24,17 @@ struct ListSettingsView: View {
         self.mode = mode
         self.onDelete = onDelete
         switch mode {
-        case .create:
-            _draft = State(initialValue: ListDraft())
+        case .create(let kind):
+            _draft = State(initialValue: ListDraft(kind: kind))
         case .edit(let list):
             _draft = State(initialValue: ListDraft(list: list))
+        }
+    }
+
+    private var title: String {
+        switch mode {
+        case .create(let kind): kind.newTitle
+        case .edit(let list): list.recurrence == .none ? "Liste bearbeiten" : "Routine bearbeiten"
         }
     }
 
@@ -116,7 +124,7 @@ struct ListSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(isEditing ? "Liste bearbeiten" : "Neue Liste")
+        .navigationTitle(title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -189,7 +197,9 @@ struct ListDraft {
     var notificationEnabled = false
     var liveActivityEnabled = false
 
-    init() {}
+    init(kind: ListKind = .routine) {
+        recurrence = kind.defaultRecurrence
+    }
 
     init(list: RoutineList) {
         name = list.name
@@ -295,7 +305,7 @@ struct ColorGrid: View {
 
 #Preview("Neue Liste") {
     NavigationStack {
-        ListSettingsView(mode: .create)
+        ListSettingsView(mode: .create(.list))
     }
     .previewEnvironment()
 }

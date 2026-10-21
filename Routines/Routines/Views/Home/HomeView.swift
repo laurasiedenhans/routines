@@ -111,7 +111,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showNewList) {
             NavigationStack {
-                ListSettingsView(mode: .create)
+                ListSettingsView(mode: .create(.routine))
             }
         }
         .sheet(isPresented: $showSettings) {

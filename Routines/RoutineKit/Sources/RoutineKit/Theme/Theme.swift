@@ -39,6 +39,21 @@ public enum Theme {
         public static var trackOpacity: Double { 0.2 }
     }
 
+    /// Navigationsleiste unten (iPhone)
+    public enum TabBar {
+        /// Abstand der Glass-Container zum Bildschirmrand
+        public static var edgePadding: CGFloat { 20 }
+        public static var bottomPadding: CGFloat { 4 }
+        public static var itemMinWidth: CGFloat { 68 }
+        public static var itemHeight: CGFloat { 52 }
+        /// Innenabstand der Gruppe um die Buttons
+        public static var groupPadding: CGFloat { 4 }
+        /// Durchmesser des „+“-Buttons (= Höhe der Gruppe)
+        public static var addButtonSize: CGFloat { 60 }
+        public static var iconSize: CGFloat { 19 }
+        public static var selectionOpacity: Double { 0.1 }
+    }
+
     public enum Check {
         public static var size: CGFloat { 24 }
         public static var hitArea: CGFloat { 44 }

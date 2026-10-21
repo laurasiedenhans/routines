@@ -235,6 +235,17 @@ routines/                              Git-Repository
   - Animationen (Dauer/Feder für Abhaken, Verschieben)
 - Komponenten wie `ProgressRing`, `ListProgressBar`, `CheckToggle` bekommen ihre Standardwerte aus dem `Theme`, können aber pro Aufruf überschrieben werden.
 
+### 7.0a Navigation (iPhone)
+- **Navigationsleiste unten** im iOS-26-Stil, keine durchgehende Leiste: zwei Liquid-Glass-Container (`GlassEffectContainer`), am Rand ausgerichtet, wachsen zur Mitte.
+  - **Links:** Gruppe mit drei Bereichen (Symbol + Text, Symbole sind Platzhalter): **Heute** (Daily Dashboard, Standard), **Routinen**, **Listen**. Aktiver Bereich hervorgehoben.
+  - **Rechts:** separater runder **„+“**-Button. Legt an, was zum Bereich passt: Heute/Routinen → „Neue Routine“, Listen → „Neue Liste“. Immer dasselbe Formular, nur passend vorausgewählt (Wiederholung täglich bzw. keine).
+  - Leiste wird bei eingeblendeter Tastatur ausgeblendet.
+- **Routine vs. Liste:** kein eigenes Feld. Routine = Wiederholung ≠ keine, Liste = ohne Wiederholung. Durch Ändern der Wiederholung wandert ein Eintrag zwischen den Bereichen.
+- **Heute (Daily Dashboard):** Tageskarte mit Ring, darunter „Heute fällig“ = genau die Routinen, die heute im Ring zählen. Später personalisierbar.
+- **Routinen / Listen:** aktuelle Einträge, darunter einklappbar „Geplant (n)“ (nächste zuerst); bei Listen zusätzlich einklappbar „Abgeschlossen (n)“ (alle To-dos erledigt).
+- **Einstellungen:** Zahnrad oben rechts in allen drei Bereichen.
+- **iPad/Mac:** vorerst unverändert (Seitenleiste mit allen Listen, `HomeView`), wird später überarbeitet.
+
 ### 7.1 Startbildschirm
 - **Oben:** kompakte **Tageskarte** (Liquid Glass): kleiner Ring links (~92 pt), Text rechts („Heute“, „x von y täglichen To-dos“, „Als Nächstes: <Liste> · <Startzeit>“).
   - **Wählbar für den Ring:** alle Listen der Art „täglich“, also täglich (n = 1) **und** alle n Tage. Wochen-, Monats-, Jahreslisten und Listen ohne Wiederholung nie.
@@ -265,7 +276,7 @@ routines/                              Git-Repository
   - **Wiederholungsinfo einheitlich:** `Rhythmus · Detail · Uhrzeit`, z. B. `Täglich · 06:30`, `Alle 2 Wochen · Do · 09:00`, `Monatlich · am 30.`, `Einmalig`. Detail nur bei wöchentlich (Wochentag), monatlich (Tag), jährlich (Datum); Uhrzeit nur mit Startzeit. Bei Platzmangel stufenweise gekürzt (`ViewThatFits`): erst ohne Detail, dann nur Rhythmus.
   - Fortschrittsbalken in Listenfarbe (erledigt / gesamt im aktuellen Zeitraum)
 - **Ganz unten: „Geplant (n)“**, einklappbar (standardmäßig zu), nur wenn vorhanden: Listen, deren Starttag in der Zukunft liegt, sortiert nach Startdatum (nächste zuerst). Statt Fortschrittsbalken „Startet am 26. Okt.“. Am Starttag wandert die Liste automatisch zu den aktiven Listen.
-- Toolbar: **links Zahnrad** (`gearshape`) → allgemeine Einstellungen; **rechts „+“** zum Anlegen einer neuen Liste.
+- Toolbar (nur iPad/Mac, `HomeView`): **links Zahnrad** (`gearshape`) → allgemeine Einstellungen; **rechts „+“** zum Anlegen einer neuen Liste. Auf dem iPhone siehe 7.0a.
 - iPad/Mac: `NavigationSplitView` (Listen links, Detail rechts). iPhone: `NavigationStack`.
 
 ### 7.2 Listen-Detail
