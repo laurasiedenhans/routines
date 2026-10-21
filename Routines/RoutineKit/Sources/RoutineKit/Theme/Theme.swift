@@ -52,6 +52,9 @@ public enum Theme {
         public static var addButtonSize: CGFloat { 60 }
         public static var iconSize: CGFloat { 19 }
         public static var selectionOpacity: Double { 0.1 }
+        /// Abstand unter dem letzten Eintrag, damit die Leiste nichts verdeckt
+        /// (Leistenhöhe + Abstand nach unten + Schönheitsabstand).
+        public static var contentClearance: CGFloat { addButtonSize + bottomPadding + 16 }
     }
 
     public enum Check {

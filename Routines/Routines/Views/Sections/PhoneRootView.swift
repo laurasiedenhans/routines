@@ -58,7 +58,9 @@ struct PhoneRootView: View {
                 SectionStack { CollectionView(kind: .list) }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        // Inhalte laufen unter der Leiste durch, lassen sich aber bis über die Leiste scrollen.
+        .contentMargins(.bottom, Theme.TabBar.contentClearance, for: .scrollContent)
+        .overlay(alignment: .bottom) {
             // Beim Tippen ausblenden, sonst schwebt die Leiste über der Tastatur.
             if !isKeyboardVisible {
                 BottomBar(section: $section, addLabel: section.newKind.newTitle) {
