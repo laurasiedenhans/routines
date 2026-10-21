@@ -138,7 +138,7 @@ CloudKit-Regeln, die **von Anfang an** eingehalten werden:
     var id: UUID = UUID()
     var name: String = ""
     var emoji: String = "✅"
-    var colorHex: String = "#007AFF"
+    var colorRaw: String = "blue"         // ListColor (Apple-Systemfarbe, passt sich Hell/Dunkel an)
     var sortOrder: Int = 0
     var createdAt: Date = Date()
 
@@ -185,33 +185,38 @@ Farben: Preset-Palette ähnlich der Erinnerungen-App (Rot, Orange, Gelb, Grün, 
 
 ## 6. Architektur
 
+**Projektdaten:** App „Routines“, Bundle-ID `de.laurasiedenhans.Routines`, Widget `de.laurasiedenhans.Routines.RoutinesWidget`, App Group (ab Phase 5) `group.de.laurasiedenhans.routines`. Erstellt mit Xcode 27, Mindestversion iOS/macOS 26.6. Synchronisierte Ordner: Dateien in `Routines/Routines/` erscheinen automatisch in Xcode.
+
 ```
-Routines/                        Xcode-Projekt
-├── RoutineKit/                  Lokales Swift Package („Backend“)
-│   ├── Models/                  SwiftData-Modelle
-│   ├── Recurrence/              RecurrenceEngine (reine Logik)
-│   ├── Services/                RoutineStore (CRUD, Abfragen, Fortschritt)
-│   ├── Scheduling/              NotificationScheduler, LiveActivityScheduler
-│   ├── Intents/                 App Intents (CompleteTaskIntent, EndActivityIntent)
-│   ├── LiveActivity/            ActivityAttributes + ContentState (geteilt mit Extension)
-│   └── Tests/
-├── RoutinesApp/                 Multiplatform-App-Target (iOS, iPadOS, macOS)
-│   ├── Views/                   Home, ListDetail, ListSettings, AddTask, Komponenten
-│   └── Resources/               Assets, String Catalog
-└── RoutinesWidgets/             Widget-Extension (Live Activity, später Widgets)
+routines/                              Git-Repository
+├── Docs/PROJECT.md                    diese Datei
+└── Routines/
+    ├── Routines.xcodeproj
+    ├── RoutineKit/                    Lokales Swift Package („Backend“)
+    │   ├── Sources/RoutineKit/
+    │   │   ├── Models/                SwiftData-Modelle
+    │   │   ├── Recurrence/            RecurrenceEngine (reine Logik)
+    │   │   ├── Services/              ListStatus, TaskVisibility, Aktionen (ModelContext-Extension)
+    │   │   ├── DayRing/               RingStyle, RingSelectionPolicy, DayRingSummary
+    │   │   ├── Settings/              AppSettings (UserDefaults)
+    │   │   ├── Clock/                 AppClock (inkl. Zeitreise für Tests)
+    │   │   ├── Persistence/           ModelContainer für App, Testdaten, Previews
+    │   │   ├── SampleData/            Testdatensatz
+    │   │   └── Theme/                 Theme, ListColor, EmojiInput
+    │   │   (später: Scheduling/, Intents/, LiveActivity/)
+    │   └── Tests/RoutineKitTests/     Swift Testing
+    ├── Routines/                      Multiplatform-App-Target (iOS, iPadOS, macOS)
+    │   ├── RoutinesApp.swift, ContentView.swift
+    │   ├── Support/                   RecurrenceFormatting (Texte), PreviewSupport
+    │   └── Views/                     Home, ListDetail, ListSettings, Settings, Components
+    └── RoutinesWidget/                Widget-Extension (noch Xcode-Vorlage, Live Activity in Phase 5)
 ```
 
-- **Trennung:** Alle Logik, Modelle und Intents in `RoutineKit`. App und Extension sind dünne UI-Schichten.
-- **App Group** (`group.<bundle-id>.shared`): gemeinsamer SwiftData-Store für App, Widget-Extension und Intents.
-- **ModelContainer:**
-  ```swift
-  ModelConfiguration(
-      groupContainer: .identifier("group.<bundle-id>.shared"),
-      cloudKitDatabase: .none          // Phase 6: .private("iCloud.<bundle-id>")
-  )
-  ```
-- Muster: `@Observable`-Store bzw. `@Query` in Views; keine schwere Logik in Views.
-- Zeit wird über einen injizierbaren `Clock`/`now`-Provider bezogen, damit Tests und Previews beliebige Daten simulieren können.
+- **Trennung:** Alle Logik, Modelle und Intents in `RoutineKit`. App und Extension sind dünne UI-Schichten. Texte für die Oberfläche liegen in der App (String Catalog).
+- **App Group:** erst ab Phase 5 eintragen. `ModelConfiguration(groupContainer: .automatic)` nutzt sie dann automatisch; `AppSettings.sharedDefaults` auf die Group-Suite umstellen.
+- **ModelContainer:** `RoutinePersistence.makeContainer()` mit `groupContainer: .automatic, cloudKitDatabase: .none` (Phase 6: `.private("iCloud.de.laurasiedenhans.Routines")`).
+- Muster: `@Query` in Views, Logik in `RoutineKit` (`ListStatus`, `DayRingSummary`, `ModelContext`-Aktionen).
+- Zeit: Views lesen nur `AppClock.now` aus der Environment.
 
 ---
 
@@ -363,11 +368,41 @@ Liste mit Startzeit: Auslösung **am ersten Tag jedes Zeitraums zur Startzeit** 
 - [x] Startzeit löst am ersten Tag jedes Zeitraums aus (entschieden)
 - [x] Listen ohne Wiederholung möglich (entschieden)
 - [x] Intervall n für Tage, Wochen, Monate und Jahre (entschieden)
-- [ ] App-Name & Bundle-ID
+- [x] App-Name „Routines“, Bundle-ID `de.laurasiedenhans.Routines` (entschieden)
+- [ ] Reihenfolge ändern (Drag & Drop) auf dem iPhone: braucht ggf. einen Bearbeiten-Modus
+- [ ] Wird Wiederholung oder Starttag einer bestehenden Liste geändert, passen alte Erledigt-Einträge evtl. nicht mehr zum neuen Zeitraum (aktuell akzeptiert)
 
 ---
 
-## 12. Konventionen für KI-Assistenten
+## 12. Testen
+
+| Ebene | Wo | Wie |
+|---|---|---|
+| Unit-Tests | `RoutineKit/Tests` (Swift Testing) | Scheme „RoutineKit“, Ziel „My Mac“, ⌘U. Feste Zeitzone Europe/Berlin. Abgedeckt: Wiederholungslogik (Monatsanker, Schaltjahr, Sommerzeit, Intervalle), Ringauswahl, Sichtbarkeit, Emoji-Eingabe. |
+| Previews | jede View | `previewEnvironment()` mit In-Memory-Testdaten |
+| Simulator mit Testdaten | Scheme „Routines (Testdaten)“ | Startargument `-sampleData`: frische In-Memory-Datenbank + eigene Einstellungen bei jedem Start, echte Daten unberührt |
+| Entwicklerbereich | Einstellungen (nur Debug) | Zeitreise (+1 Std., +1 Tag, 23:59, zurücksetzen), Testdaten hinzufügen, alle Daten löschen |
+
+**Testdatensatz (`SampleData`)**, relativ zum aktuellen Datum erzeugt:
+
+| Liste | Wiederholung | testet |
+|---|---|---|
+| ☀️ Morgenroutine | täglich, 06:30, Mitteilung + Live Activity | teils erledigt, einmaliges To-do „Paket abholen“, Verlauf der letzten 6 Tage |
+| 🌙 Abendroutine | täglich, 21:30 | nichts erledigt, „Lesen“ heute übersprungen, „Tagebuch“ alle zukünftigen gelöscht (mit Historie) |
+| 🏃 Training | alle 2 Tage, heute fällig | Ring mit n-Tage-Liste |
+| 🧘 Meditation | alle 2 Tage, heute nicht fällig | fehlt im Ring, rückt nicht nach |
+| 💊 Vitamine | täglich | 100 %, Erledigt-Bereich |
+| 🧺 Haushalt | wöchentlich, Zeitraum begann vor 2 Tagen | nicht im Ring |
+| 🪴 Pflanzen gießen | alle 2 Wochen, heute neuer Zeitraum | Intervall bei Wochen |
+| 💳 Finanzen | monatlich ab 30.01. | Monatsanker |
+| 📊 Quartalsbericht | alle 3 Monate | Intervall bei Monaten |
+| 🦷 Zahnarzt | jährlich ab 29.02.2024 | Schaltjahr |
+| 📦 Umzug | ohne Wiederholung | einmalige Liste, Löschen ohne Rückfrage |
+| 🇪🇸 Spanischkurs | täglich, Start in 5 Tagen | „Startet am …“, nicht abhakbar |
+
+---
+
+## 13. Konventionen für KI-Assistenten
 
 - Sprache im Code: Englisch (Typen, Variablen, Kommentare). UI-Texte: Deutsch über String Catalog.
 - Swift 6, Strict Concurrency; SwiftUI + SwiftData + Observation (`@Observable`), kein Combine wo vermeidbar.
