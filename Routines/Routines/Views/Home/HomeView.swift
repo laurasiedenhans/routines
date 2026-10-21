@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import RoutineKit
 
-/// Startbildschirm: Tageskarte und alle Listen mit Fortschrittsbalken.
+/// Startbildschirm: Tageskarte, aktive Listen und darunter einklappbar die geplanten Listen.
 struct HomeView: View {
     @Binding var selection: UUID?
 
@@ -11,6 +11,7 @@ struct HomeView: View {
     @Query(sort: \RoutineList.sortOrder) private var lists: [RoutineList]
     @State private var showNewList = false
     @State private var showSettings = false
+    @State private var showPlanned = false
 
     init(selection: Binding<UUID?>) {
         _selection = selection
@@ -18,12 +19,18 @@ struct HomeView: View {
 
     var body: some View {
         let engine = RecurrenceEngine.current
+        let now = clock.now
         let summary = DayRingSummary.make(
             lists: lists,
             selection: settings.selection(for: settings.ringStyle),
-            now: clock.now,
+            now: now,
             engine: engine
         )
+        let active = lists.filter { engine.period(for: $0.rule, containing: now) != nil }
+        // Geplante Listen: die nächste zuerst
+        let planned = lists
+            .filter { engine.period(for: $0.rule, containing: now) == nil }
+            .sorted { $0.anchorDate < $1.anchorDate }
 
         List(selection: $selection) {
             if !lists.isEmpty {
@@ -32,14 +39,44 @@ struct HomeView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
+            }
 
+            if !active.isEmpty {
                 Section("Listen") {
-                    ForEach(lists) { list in
+                    ForEach(active) { list in
                         NavigationLink(value: list.id) {
-                            ListRow(list: list, status: ListStatus(list: list, now: clock.now, engine: engine))
+                            ListRow(list: list, status: ListStatus(list: list, now: now, engine: engine))
                         }
                     }
-                    .onMove(perform: move)
+                    .onMove { source, destination in
+                        move(active: active, planned: planned, from: source, to: destination)
+                    }
+                }
+            }
+
+            if !planned.isEmpty {
+                Section {
+                    if showPlanned {
+                        ForEach(planned) { list in
+                            NavigationLink(value: list.id) {
+                                ListRow(list: list, status: ListStatus(list: list, now: now, engine: engine))
+                            }
+                        }
+                    }
+                } header: {
+                    Button {
+                        withAnimation(Theme.Motion.check) { showPlanned.toggle() }
+                    } label: {
+                        HStack {
+                            Text("Geplant (\(planned.count))")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .rotationEffect(.degrees(showPlanned ? 90 : 0))
+                        }
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(showPlanned ? "Geplante Listen ausblenden" : "Geplante Listen anzeigen")
                 }
             }
         }
@@ -91,10 +128,12 @@ struct HomeView: View {
         lists.filter(\.isRingEligible).map(\.ringCandidate)
     }
 
-    private func move(from source: IndexSet, to destination: Int) {
-        var reordered = lists
+    /// Sortiert die aktiven Listen um. Geplante Listen behalten ihre Reihenfolge dahinter.
+    private func move(active: [RoutineList], planned: [RoutineList], from source: IndexSet, to destination: Int) {
+        var reordered = active
         reordered.move(fromOffsets: source, toOffset: destination)
-        for (index, list) in reordered.enumerated() {
+        let plannedInOrder = planned.sorted { $0.sortOrder < $1.sortOrder }
+        for (index, list) in (reordered + plannedInOrder).enumerated() {
             list.sortOrder = index
         }
     }
@@ -109,21 +148,42 @@ struct ListRow: View {
         HStack(spacing: Theme.Spacing.m) {
             ListIcon(emoji: list.emoji, color: list.color.color)
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
                     Text(list.name.isEmpty ? "Ohne Namen" : list.name)
                         .font(.body.weight(.semibold))
                         .lineLimit(1)
-                    Spacer(minLength: Theme.Spacing.s)
-                    Text(RecurrenceFormatting.rowSubtitle(for: list, isActive: status.isActive))
+                        .layoutPriority(1)
+                    Spacer(minLength: 0)
+                    RecurrenceLabel(list: list)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
-                ListProgressBar(fraction: status.fraction, color: list.color.color)
+                if status.isActive {
+                    ListProgressBar(fraction: status.fraction, color: list.color.color)
+                } else {
+                    Text("Startet am \(RecurrenceFormatting.startDate(list.anchorDate))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Wiederholungsinfo `Rhythmus · Detail · Uhrzeit`. Wird bei Platzmangel stufenweise gekürzt:
+/// erst ohne Detail, dann nur der Rhythmus.
+struct RecurrenceLabel: View {
+    let list: RoutineList
+
+    var body: some View {
+        let variants = RecurrenceFormatting.parts(for: list).variants
+        ViewThatFits(in: .horizontal) {
+            Text(variants[0]).lineLimit(1)
+            Text(variants[1]).lineLimit(1)
+            Text(variants[2]).lineLimit(1)
+        }
     }
 }
 

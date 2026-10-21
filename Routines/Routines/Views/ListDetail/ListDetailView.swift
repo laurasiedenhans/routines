@@ -12,6 +12,8 @@ struct ListDetailView: View {
     @State private var showSettings = false
     @State private var showCompleted = false
     @State private var pendingDeletion: RoutineTask?
+    @FocusState private var isAddingTask: Bool
+    @State private var addRowFrame: CGRect = .zero
 
     init(list: RoutineList, onDelete: @escaping () -> Void) {
         _list = Bindable(list)
@@ -46,7 +48,8 @@ struct ListDetailView: View {
                     move(status.open, from: source, to: destination)
                 }
 
-                AddTaskRow(list: list, period: status.period, color: color)
+                AddTaskRow(list: list, period: status.period, color: color, isFocused: $isAddingTask)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { addRowFrame = $0 }
             } footer: {
                 if status.isComplete {
                     Text("Alles erledigt für diesen Zeitraum.")
@@ -82,6 +85,15 @@ struct ListDetailView: View {
                 }
             }
         }
+        // Tippen außerhalb des Eingabefelds beendet die Eingabe (getippter Text wird übernommen).
+        .simultaneousGesture(
+            SpatialTapGesture(coordinateSpace: .global).onEnded { tap in
+                if isAddingTask, !addRowFrame.contains(tap.location) {
+                    isAddingTask = false
+                }
+            }
+        )
+        .scrollDismissesKeyboard(.immediately)
         .navigationTitle("\(list.emoji) \(list.name)")
         .tint(color)
         .toolbar {
@@ -206,25 +218,32 @@ struct TaskRow: View {
 }
 
 /// „+ Aufgabe hinzufügen“ am Ende der Liste, mit Auswahl „Immer / Einmalig“.
+///
+/// Verhalten wie in der Erinnerungen-App: Return fügt hinzu und bleibt für das nächste To-do offen.
+/// Verliert das Feld den Fokus (Tippen außerhalb, Scrollen), wird getippter Text übernommen
+/// und die Eingabe geschlossen. Ein leeres Feld schließt sich einfach.
 struct AddTaskRow: View {
     let list: RoutineList
     let period: Period?
     let color: Color
+    @FocusState.Binding var isFocused: Bool
 
     @Environment(\.modelContext) private var context
     @Environment(AppClock.self) private var clock
     @State private var isEditing = false
     @State private var title = ""
     @State private var isOneOff = false
-    @FocusState private var isFocused: Bool
 
     var body: some View {
         if isEditing {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 TextField("Neue Aufgabe", text: $title)
                     .focused($isFocused)
-                    .submitLabel(.done)
-                    .onSubmit(add)
+                    .submitLabel(.next)
+                    .onSubmit {
+                        add()
+                        isFocused = true
+                    }
 
                 if showsFrequencyChoice {
                     Picker("Häufigkeit", selection: $isOneOff) {
@@ -234,18 +253,16 @@ struct AddTaskRow: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
-
-                HStack {
-                    Button("Abbrechen", role: .cancel) { reset() }
-                    Spacer()
-                    Button("Hinzufügen", action: add)
-                        .fontWeight(.semibold)
-                        .disabled(trimmedTitle.isEmpty)
-                }
-                .buttonStyle(.borderless)
             }
             .padding(.vertical, Theme.Spacing.xs)
             .onAppear { isFocused = true }
+            .onChange(of: isFocused) { _, focused in
+                guard !focused else { return }
+                // Nach Return holt sich das Feld den Fokus sofort zurück: dann nicht schließen.
+                DispatchQueue.main.async {
+                    if !isFocused { finish() }
+                }
+            }
         } else {
             Button {
                 isEditing = true
@@ -274,13 +291,13 @@ struct AddTaskRow: View {
         }
         try? context.save()
         title = ""
-        isFocused = true
     }
 
-    private func reset() {
-        title = ""
+    /// Übernimmt getippten Text und schließt die Eingabe.
+    private func finish() {
+        add()
         isOneOff = false
-        isEditing = false
+        withAnimation(Theme.Motion.check) { isEditing = false }
     }
 }
 

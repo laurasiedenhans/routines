@@ -260,9 +260,11 @@ routines/                              Git-Repository
     - **E · Segmente:** ein Segment pro täglicher Liste in Listenfarbe, Länge nach Anzahl To-dos, runde Enden (dürfen optisch leicht überlappen bzw. nicht perfekt anschließen), keine Legende – die Zuordnung ergibt sich über die Listenfarben darunter.
     - **F · Ringe ineinander:** wie die Fitness-Bewegungsringe, nur die ersten 3 täglichen Listen (nach `sortOrder`), außen beginnend. Prozent dann im Text statt im Ring.
   - Kein Fortschritt (0) → Füllung ausblenden (runde Enden würden sonst einen Punkt zeichnen).
-- **Darunter:** alle Listen als Zeilen/Karten:
-  - Emoji in farbigem Kreis, Name, Startzeit (falls gesetzt)
+- **Darunter:** alle aktiven Listen als Zeilen:
+  - Emoji in farbigem Kreis, Name, Wiederholungsinfo
+  - **Wiederholungsinfo einheitlich:** `Rhythmus · Detail · Uhrzeit`, z. B. `Täglich · 06:30`, `Alle 2 Wochen · Do · 09:00`, `Monatlich · am 30.`, `Einmalig`. Detail nur bei wöchentlich (Wochentag), monatlich (Tag), jährlich (Datum); Uhrzeit nur mit Startzeit. Bei Platzmangel stufenweise gekürzt (`ViewThatFits`): erst ohne Detail, dann nur Rhythmus.
   - Fortschrittsbalken in Listenfarbe (erledigt / gesamt im aktuellen Zeitraum)
+- **Ganz unten: „Geplant (n)“**, einklappbar (standardmäßig zu), nur wenn vorhanden: Listen, deren Starttag in der Zukunft liegt, sortiert nach Startdatum (nächste zuerst). Statt Fortschrittsbalken „Startet am 26. Okt.“. Am Starttag wandert die Liste automatisch zu den aktiven Listen.
 - Toolbar: **links Zahnrad** (`gearshape`) → allgemeine Einstellungen; **rechts „+“** zum Anlegen einer neuen Liste.
 - iPad/Mac: `NavigationSplitView` (Listen links, Detail rechts). iPhone: `NavigationStack`.
 
@@ -272,7 +274,7 @@ routines/                              Git-Repository
 - Abhaken → Toggle wird ausgefüllt, To-do wandert animiert in den eingeklappten Bereich **„Erledigt (n)“** am Ende (ausklappbar, standardmäßig zu).
 - Erneutes Tippen auf einen ausgefüllten Toggle → To-do wird wieder offen und rutscht nach oben.
 - **Swipe nach links** → „Löschen“ → `confirmationDialog`: „Nur heute löschen“ / „Alle zukünftigen löschen“ / „Abbrechen“.
-- Am Listenende: **„+ Aufgabe hinzufügen“** → Eingabe des Titels + Auswahl **„Nur heute / Immer“** (Segmented Control).
+- Am Listenende: **„+ Aufgabe hinzufügen“** → Textfeld + Auswahl **„Immer / Einmalig“** (Segmented Control), **ohne Buttons** wie in der Erinnerungen-App: Return fügt hinzu und bleibt offen für das nächste To-do; Tippen außerhalb des Felds oder Scrollen übernimmt getippten Text und schließt die Eingabe; leeres Feld schließt einfach.
 - Reihenfolge per Drag & Drop änderbar (`sortOrder`).
 - **Oben rechts: Zahnrad** → Listen-Einstellungen.
 

@@ -30,39 +30,55 @@ enum RecurrenceFormatting {
         }
     }
 
-    /// Kurzbeschreibung für Listenzeilen, z. B. „Alle 2 Wochen · Do“.
-    static func summary(for list: RoutineList) -> String {
-        let n = list.interval
-        switch list.recurrence {
-        case .none:
-            return "Einmalig"
-        case .daily:
-            return n == 1 ? "Täglich" : "Alle \(n) Tage"
-        case .weekly:
-            let day = weekdayName(list.weekday)
-            return n == 1 ? "Wöchentlich · \(day)" : "Alle \(n) Wochen · \(day)"
-        case .monthly:
-            let day = Calendar.current.component(.day, from: list.anchorDate)
-            return n == 1 ? "Monatlich · am \(day)." : "Alle \(n) Monate · am \(day)."
-        case .yearly:
-            let date = list.anchorDate.formatted(.dateTime.day().month(.abbreviated))
-            return n == 1 ? "Jährlich · \(date)" : "Alle \(n) Jahre · \(date)"
+    /// Bausteine der Wiederholungsinfo: `Rhythmus · Detail · Uhrzeit`.
+    struct Parts {
+        /// z. B. „Täglich“, „Alle 2 Wochen“, „Einmalig“ – immer vorhanden
+        let rhythm: String
+        /// z. B. „Do“, „am 30.“, „29. Feb.“ – nur bei wöchentlich/monatlich/jährlich
+        let detail: String?
+        /// z. B. „06:30“ – nur mit Startzeit
+        let time: String?
+
+        /// Varianten von ausführlich bis knapp, für `ViewThatFits`.
+        var variants: [String] {
+            [
+                [rhythm, detail, time],
+                [rhythm, time],
+                [rhythm]
+            ].map { $0.compactMap { $0 }.joined(separator: " · ") }
         }
     }
 
-    /// Zeile unter dem Listennamen auf dem Startbildschirm.
-    static func rowSubtitle(for list: RoutineList, isActive: Bool) -> String {
-        guard isActive else {
-            return "Ab \(list.anchorDate.formatted(.dateTime.day().month(.abbreviated)))"
+    static func parts(for list: RoutineList) -> Parts {
+        let n = list.interval
+        let rhythm: String
+        var detail: String?
+        switch list.recurrence {
+        case .none:
+            rhythm = "Einmalig"
+        case .daily:
+            rhythm = n == 1 ? "Täglich" : "Alle \(n) Tage"
+        case .weekly:
+            rhythm = n == 1 ? "Wöchentlich" : "Alle \(n) Wochen"
+            detail = weekdayName(list.weekday)
+        case .monthly:
+            rhythm = n == 1 ? "Monatlich" : "Alle \(n) Monate"
+            detail = "am \(Calendar.current.component(.day, from: list.anchorDate))."
+        case .yearly:
+            rhythm = n == 1 ? "Jährlich" : "Alle \(n) Jahre"
+            detail = list.anchorDate.formatted(.dateTime.day().month(.abbreviated))
         }
-        var parts: [String] = []
-        if !(list.recurrence == .daily && list.interval == 1) {
-            parts.append(summary(for: list))
-        }
-        if let minutes = list.startTimeMinutes {
-            parts.append(startTime(minutes: minutes))
-        }
-        return parts.isEmpty ? "Täglich" : parts.joined(separator: " · ")
+        return Parts(rhythm: rhythm, detail: detail, time: list.startTimeMinutes.map(startTime(minutes:)))
+    }
+
+    /// Rhythmus mit Detail, ohne Uhrzeit, z. B. „Alle 2 Wochen · Do“.
+    static func summary(for list: RoutineList) -> String {
+        let p = parts(for: list)
+        return [p.rhythm, p.detail].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    static func startDate(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated))
     }
 }
 

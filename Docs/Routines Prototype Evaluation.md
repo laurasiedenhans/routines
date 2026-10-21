@@ -9,13 +9,13 @@ Ein schneller Prototyp funktioniert und kann in Xcode simuliert werden. Im näch
 
 ## Verbesserungen
 
-- Die Wiederholungsinfo der Listenanzeige ist inkonsistent. Manche Listen zeigen eine Uhrzeit, andere einen Rithmus und andere beides. Alle Listen sollen die gleiche Info zeigen, soweit der Platz reicht und eine Uhrzeit eingestellt ist.
-- Beim Hinzufügen von To-dos soll sich das Eingabefenster schließen, sobald wo außerhalb des Dialogfelds auf den Bildschirm klickt.
+- Die Wiederholungsinfo der Listenanzeige ist inkonsistent. Manche Listen zeigen eine Uhrzeit, andere einen Rhythmus und andere beides. Alle Listen sollen die gleiche Info zeigen, soweit der Platz reicht und eine Uhrzeit eingestellt ist.
+- Beim Hinzufügen von To-dos soll sich das Eingabefenster schließen, sobald man außerhalb des Dialogfelds auf den Bildschirm klickt.
 
 Es sind auch einige weitere Funktionen aufgefallen, die die App brauchbarer machen würden und die somit ebenfalls hinzugefügt werden sollen. 
 
 ## Neue Funktionen
 
-- Einmalige Listen brauchen einen Löschmechanismus, damit der Progress zurückgesetzt werden kann.
-- Die App soll eine Navbar unten bekommen, die zwischen verschiedenen Ansichten/ Funktionalitäten wechseln lässt. Dabei soll es einen Screen für Routines, einen für einmalige Listen geben ein Daily Dashboard, dass alle heute anstehenden To-dos anzeigt. Für erste werden hier einfach alle Routinen angezeigt, die heute fällig sind. Die To-dos sollen dann ausklappbar sein. Die Einstellungen sollen auch in die Navbar verschoben werden.
-- Kategorien, in die man seine Listen sortieren kann, so dass man ganze Schedules bauen kann. Diese soll man einklappen können.
+- Einmalige Listen brauchen einen Löschmechanismus, damit der Fortschritt zurückgesetzt werden kann.
+- Die App soll eine Navbar unten bekommen, die zwischen verschiedenen Ansichten/Funktionalitäten wechseln lässt. Dabei soll es einen Screen für Routines, einen für einmalige Listen und ein Daily Dashboard geben, das alle heute anstehenden To-dos anzeigt. Zuerst werden hier einfach alle Routinen angezeigt, die heute fällig sind. Die To-dos sollen dann ausklappbar sein. Die Einstellungen sollen auch in die Navbar verschoben werden.
+- Kategorien, in die man seine Listen sortieren kann, sodass man ganze Schedules bauen kann. Diese soll man einklappen können.
