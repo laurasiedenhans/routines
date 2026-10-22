@@ -272,34 +272,57 @@ struct EmojiGrid: View {
     }
 }
 
-/// Farbauswahl wie in der Erinnerungen-App.
+/// Farbauswahl: jede Farbgruppe in eigenen Zeilen (7 pro Zeile, dann Umbruch),
+/// zwischen den Gruppen ein schmaler grauer Trennstrich.
 struct ColorGrid: View {
     @Binding var selection: ListColor
 
-    private let columns = [GridItem(.adaptive(minimum: Theme.Icon.swatchSize + 8), spacing: Theme.Spacing.m)]
+    private var columns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: Theme.ColorPicker.spacing),
+            count: Theme.ColorPicker.columns
+        )
+    }
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: Theme.Spacing.m) {
-            ForEach(ListColor.allCases) { listColor in
-                Button {
-                    selection = listColor
-                } label: {
-                    Circle()
-                        .fill(listColor.color)
-                        .frame(width: Theme.Icon.swatchSize, height: Theme.Icon.swatchSize)
-                        .padding(4)
-                        .overlay {
-                            if selection == listColor {
-                                Circle().strokeBorder(Color.secondary, lineWidth: 2)
-                            }
-                        }
+        VStack(spacing: Theme.Spacing.m) {
+            ForEach(Array(ColorPalette.groups.enumerated()), id: \.element.id) { index, group in
+                if index > 0 {
+                    Divider()
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(listColor.displayName)
-                .accessibilityAddTraits(selection == listColor ? .isSelected : [])
+                LazyVGrid(columns: columns, spacing: Theme.ColorPicker.spacing) {
+                    ForEach(group.colors) { listColor in
+                        swatch(for: listColor)
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(group.name)
             }
         }
         .padding(.vertical, Theme.Spacing.xs)
+    }
+
+    private func swatch(for listColor: ListColor) -> some View {
+        let isSelected = selection == listColor
+        return Button {
+            selection = listColor
+        } label: {
+            // Passt sich der Spaltenbreite an, damit 7 Farben auch auf kleinen iPhones in eine Zeile passen.
+            Circle()
+                .fill(listColor.color)
+                .padding(4)
+                .overlay {
+                    if isSelected {
+                        Circle().strokeBorder(Color.secondary, lineWidth: Theme.ColorPicker.selectionRingWidth)
+                    }
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: Theme.Icon.swatchSize + 8)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(listColor.displayName)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

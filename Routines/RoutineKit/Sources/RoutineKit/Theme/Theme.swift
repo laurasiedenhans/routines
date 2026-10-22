@@ -29,7 +29,6 @@ public enum Theme {
         /// Lücke zwischen Segmenten (in Punkt, zusätzlich zu den runden Enden)
         public static var segmentGap: CGFloat { 4 }
         public static var trackOpacity: Double { 0.22 }
-        public static var accent: Color { .accentColor }
         public static var emptyTrack: Color { .secondary }
         public static var labelFont: Font { .system(size: 20, weight: .bold, design: .rounded) }
     }
@@ -55,6 +54,14 @@ public enum Theme {
         /// Abstand unter dem letzten Eintrag, damit die Leiste nichts verdeckt
         /// (Leistenhöhe + Abstand nach unten + Schönheitsabstand).
         public static var contentClearance: CGFloat { addButtonSize + bottomPadding + 16 }
+    }
+
+    /// Farbauswahl in den Listen-Einstellungen
+    public enum ColorPicker {
+        /// Farben pro Zeile, danach wird umgebrochen
+        public static var columns: Int { 7 }
+        public static var spacing: CGFloat { 8 }
+        public static var selectionRingWidth: CGFloat { 2 }
     }
 
     public enum Check {

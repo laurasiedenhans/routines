@@ -2,6 +2,16 @@ import SwiftUI
 import SwiftData
 import RoutineKit
 
+extension View {
+    /// Hell/Dunkel und Akzentfarbe aus den Einstellungen.
+    /// Wird zusätzlich in Sheets gesetzt, damit offene Fenster sofort mitwechseln.
+    func appearance(from settings: AppSettings) -> some View {
+        self
+            .preferredColorScheme(settings.appearance.colorScheme)
+            .tint(settings.accentColor.color)
+    }
+}
+
 @main
 struct RoutinesApp: App {
     @State private var clock = AppClock()
@@ -23,6 +33,7 @@ struct RoutinesApp: App {
             ContentView()
                 .environment(clock)
                 .environment(settings)
+                .appearance(from: settings)
         }
         .modelContainer(container)
 
@@ -35,6 +46,7 @@ struct RoutinesApp: App {
             .environment(clock)
             .environment(settings)
             .modelContainer(container)
+            .appearance(from: settings)
         }
         #endif
     }

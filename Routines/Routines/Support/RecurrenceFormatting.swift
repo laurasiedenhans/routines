@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import RoutineKit
 
 /// Texte rund um Wiederholungen. Liegt in der App (nicht im Package), damit sie
@@ -90,6 +91,25 @@ extension RecurrenceKind {
         case .weekly: "Wöchentlich"
         case .monthly: "Monatlich"
         case .yearly: "Jährlich"
+        }
+    }
+}
+
+extension AppAppearance {
+    var displayName: String {
+        switch self {
+        case .system: "System"
+        case .light: "Hell"
+        case .dark: "Dunkel"
+        }
+    }
+
+    /// `nil` = dem System folgen
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 }

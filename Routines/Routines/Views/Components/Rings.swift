@@ -18,17 +18,22 @@ struct PercentLabel: View {
 /// D · ein Ring in einer Farbe. Wird auch für die einzelnen Ringe von „Ringe ineinander“ genutzt.
 struct SimpleRing: View {
     var fraction: Double
-    var color: Color = Theme.Ring.accent
+    /// `nil` = Akzentfarbe der App (aus den Einstellungen)
+    var color: Color? = nil
     var lineWidth: CGFloat = Theme.Ring.lineWidth
     var showsLabel = true
+
+    private var style: AnyShapeStyle {
+        if let color { AnyShapeStyle(color) } else { AnyShapeStyle(.tint) }
+    }
 
     var body: some View {
         ZStack {
             Circle()
-                .stroke(color.opacity(Theme.Ring.trackOpacity), lineWidth: lineWidth)
+                .stroke(style.opacity(Theme.Ring.trackOpacity), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: fraction)
-                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(style, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 // Runde Enden würden bei 0 % einen Punkt zeichnen.
                 .opacity(fraction > 0 ? 1 : 0)

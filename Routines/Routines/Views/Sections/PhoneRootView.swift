@@ -115,7 +115,7 @@ struct BottomBar: View {
                 Button(action: onAdd) {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(.tint)
                         .frame(width: Theme.TabBar.addButtonSize, height: Theme.TabBar.addButtonSize)
                         .contentShape(Circle())
                 }
@@ -140,7 +140,7 @@ struct BottomBar: View {
                 Text(item.title)
                     .font(.caption2.weight(.semibold))
             }
-            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
             .frame(minWidth: Theme.TabBar.itemMinWidth, minHeight: Theme.TabBar.itemHeight)
             .background {
                 if isSelected {

@@ -181,7 +181,15 @@ CloudKit-Regeln, die **von Anfang an** eingehalten werden:
 }
 ```
 
-Farben: Preset-Palette ähnlich der Erinnerungen-App (Rot, Orange, Gelb, Grün, Mint, Blau, Indigo, Lila, Pink, Braun, Grau) plus optional nativer `ColorPicker`.
+Farben (`ColorPalette` in `RoutineKit/Theme/ListColor.swift`, experimentell, wird noch feinjustiert): Gruppen mit je eigener Reihe in der Auswahl (7 pro Zeile, dann Umbruch, grauer Trennstrich zwischen Gruppen).
+- **Apple:** 13 Systemfarben (Dark-Mode-Varianten von Apple)
+- **Schokolade:** Arsenic `#354242`, Morning Blue `#8B9B93`, American Silver `#CFCFCD`, Liver Chestnut `#55453A`, Bistre `#362419`
+- **Denim:** Silver Chalice `#B5ACA3`, Pale Cornflower Blue `#B0D2EC`, Pewter Blue `#849DBB`, Silver Lake Blue `#648EC0`, Royal Brown `#533A33`
+- **Waldgrün:** Cork Wedge `#C0A889`, Cheeky Chestnut `#7A4E39`, Green Beret `#536D5F`, Roycroft Bottle Green `#363F37`, Quartzite `#1F2B27`
+- **Herbstlaub:** Space Cadet `#25344F`, Slate Gray `#617891`, Tan `#D5B893`, Coffee `#6F4D38`, Caput Mortuum `#632024`
+- **Bordeaux:** Camel Coat `#C6B39A`, Boho `#7B694E`, Rubine `#6D3A3C`, Tamarind `#361319`, Italian Roast `#280B0F`
+- **Dark-Mode-Varianten** nur für sehr dunkle Farben: Bistre `#8B7568`, Quartzite `#707E79`, Italian Roast `#866063` (gleicher Farbton und gleiche Buntheit, nur heller, berechnet in OKLCH).
+- `colorRaw` speichert den `rawValue` (z. B. `blue`, `italianRoast`). Bestehende Schlüssel nie ändern.
 
 ---
 
@@ -243,7 +251,7 @@ routines/                              Git-Repository
   - **Rechts:** separater runder **„+“**-Button. Legt an, was zum Bereich passt: Heute/Routinen → „Neue Routine“, Listen → „Neue Liste“. Immer dasselbe Formular, nur passend vorausgewählt (Wiederholung täglich bzw. keine).
   - Leiste wird bei eingeblendeter Tastatur ausgeblendet.
 - **Routine vs. Liste:** kein eigenes Feld. Routine = Wiederholung ≠ keine, Liste = ohne Wiederholung. Durch Ändern der Wiederholung wandert ein Eintrag zwischen den Bereichen.
-- **Heute (Daily Dashboard):** Tageskarte mit Ring, darunter „Heute fällig“ = genau die Routinen, die heute im Ring zählen. Später personalisierbar.
+- **Heute (Daily Dashboard):** Tageskarte mit Ring (Ringauswahl aus den Einstellungen), darunter „Heute fällig“ = alle täglichen Routinen (auch „alle n Tage“), deren Zeitraum heute beginnt, unabhängig von der Ringauswahl. Keine wöchentlichen, monatlichen, jährlichen oder einmaligen Listen. Später personalisierbar.
 - **Routinen / Listen:** aktuelle Einträge, darunter einklappbar „Geplant (n)“ (nächste zuerst); bei Listen zusätzlich einklappbar „Abgeschlossen (n)“ (alle To-dos erledigt).
 - **Einstellungen:** Zahnrad oben rechts in allen drei Bereichen.
 - **iPad/Mac:** vorerst unverändert (Seitenleiste mit allen Listen, `HomeView`), wird später überarbeitet.
@@ -319,7 +327,9 @@ Gleiches Formular wie Einstellungen, als Sheet vom Startbildschirm.
   - **Ringstil:** Einfacher Ring / Segmente / Ringe ineinander (Picker mit kleiner Vorschau). Standard: Segmente.
   - **Listen im Ring:** darunter alle wählbaren Listen (täglich und alle n Tage, mit Rhythmus-Angabe) mit Häkchen für den gewählten Stil, Hinweis „x von max. 5 ausgewählt“; weitere Häkchen sind deaktiviert, sobald das Maximum erreicht ist.
   - Gespeichert als `ringSelection: [RingStyle: [UUID]]` (Listen-IDs) in `AppSettings`.
-- **Kandidaten für später:** Erscheinungsbild (System/Hell/Dunkel), Standardwerte für neue Listen (Farbe, Wiederholung), Mitteilungen global an/aus, Statistiken, Über die App.
+- **Erscheinungsbild:** System / Hell / Dunkel (Segmented Control, Standard: System), umgesetzt über `preferredColorScheme`. Wird zusätzlich im Einstellungs-Sheet gesetzt, damit es sofort mitwechselt.
+- **Akzentfarbe:** gleiche Farbauswahl wie bei Listen (Standard: Blau), umgesetzt über `.tint()`. Gilt für den einfachen Ring, das „+“, die Navigation, Toggles und Buttons. Views nutzen `.tint` statt `Color.accentColor`.
+- **Kandidaten für später:** Standardwerte für neue Listen (Farbe, Wiederholung), Mitteilungen global an/aus, Statistiken, Über die App.
 - **Speicherung:** `AppSettings` (`@Observable`) in `RoutineKit`, gespeichert in den `UserDefaults` der App Group (damit Widget/Live Activity den Ringstil lesen können). Ab Phase 6 optional über iCloud Key-Value Store zwischen Geräten synchronisieren.
 - Einstellungen gehören **nicht** in SwiftData: Sie sind gerätenah, klein und brauchen keine Historie.
 

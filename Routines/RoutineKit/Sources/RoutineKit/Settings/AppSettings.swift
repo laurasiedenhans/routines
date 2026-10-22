@@ -1,6 +1,13 @@
 import Foundation
 import Observation
 
+/// Erscheinungsbild der App
+public enum AppAppearance: String, CaseIterable, Codable, Sendable {
+    case system
+    case light
+    case dark
+}
+
 public enum RoutineConstants {
     /// Wird ab Phase 5 (Live Activity) gebraucht, wenn App und Widget Daten teilen.
     public static let appGroupID = "group.de.laurasiedenhans.routines"
@@ -13,6 +20,21 @@ public final class AppSettings {
 
     public var ringStyle: RingStyle {
         didSet { save() }
+    }
+
+    /// Hell, Dunkel oder wie das System (Standard)
+    public var appearance: AppAppearance {
+        didSet { save() }
+    }
+
+    /// Akzentfarbe der App (Ring, „+“, Navigation, Buttons). Gespeichert als `ListColor.rawValue`.
+    public var accentColorRaw: String {
+        didSet { save() }
+    }
+
+    public var accentColor: ListColor {
+        get { ListColor(rawValue: accentColorRaw) ?? .blue }
+        set { accentColorRaw = newValue.rawValue }
     }
 
     /// Abgeschlossene einmalige Listen löschen nach … (Standard: nie)
@@ -39,6 +61,8 @@ public final class AppSettings {
             .flatMap { try? JSONDecoder().decode(Stored.self, from: $0) }
         self.ringStyle = stored?.ringStyle ?? .segmented
         self.completedListRetention = stored?.completedListRetention ?? .never
+        self.appearance = stored?.appearance ?? .system
+        self.accentColorRaw = stored?.accentColorRaw ?? ListColor.blue.rawValue
         self.selections = stored?.selections ?? [:]
         self.seen = stored?.seen ?? [:]
     }
@@ -104,6 +128,8 @@ public final class AppSettings {
         var seen: [String: [UUID]]
         /// Optional, damit ältere gespeicherte Einstellungen weiter lesbar sind.
         var completedListRetention: ListRetention?
+        var appearance: AppAppearance?
+        var accentColorRaw: String?
     }
 
     private func save() {
@@ -111,7 +137,9 @@ public final class AppSettings {
             ringStyle: ringStyle,
             selections: selections,
             seen: seen,
-            completedListRetention: completedListRetention
+            completedListRetention: completedListRetention,
+            appearance: appearance,
+            accentColorRaw: accentColorRaw
         )
         if let data = try? JSONEncoder().encode(stored) {
             defaults.set(data, forKey: Self.storageKey)

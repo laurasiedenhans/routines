@@ -14,6 +14,26 @@ struct SettingsView: View {
 
         Form {
             Section {
+                Picker("Erscheinungsbild", selection: $settings.appearance) {
+                    ForEach(AppAppearance.allCases, id: \.self) { appearance in
+                        Text(appearance.displayName).tag(appearance)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            } header: {
+                Text("Erscheinungsbild")
+            }
+
+            Section {
+                ColorGrid(selection: $settings.accentColor)
+            } header: {
+                Text("Akzentfarbe")
+            } footer: {
+                Text("Für den einfachen Ring, das „+“, die Navigation und Buttons.")
+            }
+
+            Section {
                 Picker("Ringstil", selection: $settings.ringStyle) {
                     ForEach(RingStyle.allCases, id: \.self) { ringStyle in
                         Label(ringStyle.displayName, systemImage: ringStyle.systemImage)
@@ -81,6 +101,8 @@ struct SettingsView: View {
             #endif
         }
         .formStyle(.grouped)
+        // Sheets übernehmen Änderungen sonst erst beim nächsten Öffnen.
+        .appearance(from: settings)
         .navigationTitle("Einstellungen")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

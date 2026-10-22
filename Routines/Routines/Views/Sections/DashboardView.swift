@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 import RoutineKit
 
-/// Daily Dashboard: Tageskarte mit Ring und die Routinen, die heute in den Ring zählen.
-/// Später personalisierbar (welche Routinen hier erscheinen).
+/// Daily Dashboard: Tageskarte mit Ring (Ringauswahl aus den Einstellungen) und darunter
+/// alle täglichen Routinen, die heute fällig sind. Später personalisierbar.
 struct DashboardView: View {
     @Environment(AppClock.self) private var clock
     @Environment(AppSettings.self) private var settings
@@ -18,7 +18,9 @@ struct DashboardView: View {
             now: now,
             engine: engine
         )
-        let dueToday = summary.items.compactMap { item in lists.first { $0.id == item.id } }
+        // Alle täglichen Routinen (auch „alle n Tage“), die heute fällig sind – unabhängig von der Ringauswahl.
+        // Wöchentliche, monatliche, jährliche und einmalige Listen erscheinen hier nicht.
+        let dueToday = lists.filter { $0.recurrence == .daily && engine.isDue($0.rule, on: now) }
 
         List {
             Section {
