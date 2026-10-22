@@ -94,6 +94,19 @@ extension RecurrenceKind {
     }
 }
 
+extension ListRetention {
+    var displayName: String {
+        switch self {
+        case .never: "Nie"
+        case .oneDay: "Nach 1 Tag"
+        case .threeDays: "Nach 3 Tagen"
+        case .oneWeek: "Nach 1 Woche"
+        case .twoWeeks: "Nach 2 Wochen"
+        case .oneMonth: "Nach 1 Monat"
+        }
+    }
+}
+
 extension RingStyle {
     var displayName: String {
         switch self {

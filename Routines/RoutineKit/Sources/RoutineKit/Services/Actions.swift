@@ -49,6 +49,20 @@ public extension ModelContext {
         return task
     }
 
+    /// „Alle löschen“ im Erledigt-Bereich einer einmaligen Liste.
+    func deleteCompletedTasks(of list: RoutineList, in period: Period) {
+        for task in list.tasks ?? [] where task.isCompleted(in: period) {
+            delete(task)
+        }
+    }
+
+    /// „Wiederverwenden“: entfernt alle To-dos, die Liste ist danach leer.
+    func deleteAllTasks(of list: RoutineList) {
+        for task in list.tasks ?? [] {
+            delete(task)
+        }
+    }
+
     /// Löscht alle Listen, To-dos und Einträge (Entwicklerbereich).
     func deleteAllRoutineData() throws {
         try delete(model: TaskRecord.self)

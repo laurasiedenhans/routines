@@ -64,6 +64,18 @@ struct SettingsView: View {
                 Text(selectionFooter(for: style))
             }
 
+            Section {
+                Picker("Abgeschlossene löschen", selection: $settings.completedListRetention) {
+                    ForEach(ListRetention.allCases, id: \.self) { retention in
+                        Text(retention.displayName).tag(retention)
+                    }
+                }
+            } header: {
+                Text("Listen")
+            } footer: {
+                Text("Einmalige Listen, bei denen alles erledigt ist, werden nach dieser Zeit automatisch gelöscht. Gezählt wird ab dem letzten abgehakten To-do.")
+            }
+
             #if DEBUG
             DeveloperSection()
             #endif

@@ -12,6 +12,8 @@ struct ListDetailView: View {
     @State private var showSettings = false
     @State private var showCompleted = false
     @State private var pendingDeletion: RoutineTask?
+    @State private var confirmReuse = false
+    @State private var confirmClearDone = false
     @FocusState private var isAddingTask: Bool
     @State private var addRowFrame: CGRect = .zero
 
@@ -35,6 +37,29 @@ struct ListDetailView: View {
                 }
             }
 
+            // Einmalige Liste komplett erledigt: leeren und erneut nutzen (z. B. Packliste)
+            if isOneOff, status.isComplete {
+                Section {
+                    Button {
+                        confirmReuse = true
+                    } label: {
+                        Label("Wiederverwenden", systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.borderless)
+                    .confirmationDialog("Liste wiederverwenden?", isPresented: $confirmReuse, titleVisibility: .visible) {
+                        Button("Alle To-dos entfernen", role: .destructive) {
+                            withAnimation(Theme.Motion.check) { context.deleteAllTasks(of: list) }
+                            save()
+                        }
+                        Button("Abbrechen", role: .cancel) {}
+                    } message: {
+                        Text("Alle To-dos werden gelöscht, die Liste ist danach leer und wieder bei den aktuellen Listen.")
+                    }
+                } footer: {
+                    Text("Alles erledigt. Name, Symbol und Farbe bleiben beim Wiederverwenden erhalten.")
+                }
+            }
+
             Section {
                 ForEach(status.open) { task in
                     TaskRow(task: task, isDone: false, color: color, isEnabled: status.isActive) {
@@ -51,47 +76,40 @@ struct ListDetailView: View {
                 AddTaskRow(list: list, period: status.period, color: color, isFocused: $isAddingTask)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { addRowFrame = $0 }
             } footer: {
-                if status.isComplete {
+                if status.isComplete, !isOneOff {
                     Text("Alles erledigt für diesen Zeitraum.")
                 }
             }
 
             if !status.done.isEmpty {
-                Section {
-                    if showCompleted {
-                        ForEach(status.done) { task in
-                            TaskRow(task: task, isDone: true, color: color) {
-                                toggle(task, in: status.period)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                deleteButton(for: task)
-                            }
+                // „Alle löschen“ nur bei einmaligen Listen: bei Routinen kommen erledigte To-dos wieder.
+                CollapsibleSection(
+                    title: "Erledigt",
+                    count: status.done.count,
+                    isExpanded: $showCompleted,
+                    actionTitle: isOneOff ? "Alle löschen" : nil,
+                    action: { confirmClearDone = true }
+                ) {
+                    ForEach(status.done) { task in
+                        TaskRow(task: task, isDone: true, color: color) {
+                            toggle(task, in: status.period)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            deleteButton(for: task)
                         }
                     }
-                } header: {
-                    Button {
-                        withAnimation(Theme.Motion.check) { showCompleted.toggle() }
-                    } label: {
-                        HStack {
-                            Text("Erledigt (\(status.done.count))")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .rotationEffect(.degrees(showCompleted ? 90 : 0))
-                        }
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(showCompleted ? "Erledigte ausblenden" : "Erledigte anzeigen")
                 }
             }
         }
         // Tippen außerhalb des Eingabefelds beendet die Eingabe (getippter Text wird übernommen).
+        // Nur aktiv, solange das Feld offen ist: sonst fängt die Geste die Zeilen-Buttons ab.
         .simultaneousGesture(
             SpatialTapGesture(coordinateSpace: .global).onEnded { tap in
                 if isAddingTask, !addRowFrame.contains(tap.location) {
                     isAddingTask = false
                 }
-            }
+            },
+            including: isAddingTask ? .all : .subviews
         )
         .scrollDismissesKeyboard(.immediately)
         .navigationTitle("\(list.emoji) \(list.name)")
@@ -109,6 +127,17 @@ struct ListDetailView: View {
             NavigationStack {
                 ListSettingsView(mode: .edit(list), onDelete: onDelete)
             }
+        }
+        .confirmationDialog("Erledigte To-dos löschen?", isPresented: $confirmClearDone, titleVisibility: .visible) {
+            Button(status.done.count == 1 ? "1 To-do löschen" : "\(status.done.count) To-dos löschen", role: .destructive) {
+                if let period = status.period {
+                    withAnimation(Theme.Motion.check) { context.deleteCompletedTasks(of: list, in: period) }
+                    save()
+                }
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Die erledigten To-dos werden endgültig aus der Liste entfernt.")
         }
         .confirmationDialog(
             "To-do löschen?",
@@ -175,6 +204,11 @@ struct ListDetailView: View {
 
     private func save() {
         try? context.save()
+    }
+
+    /// Liste ohne Wiederholung
+    private var isOneOff: Bool {
+        list.recurrence == .none
     }
 
     private var onceLabel: String {
@@ -269,6 +303,7 @@ struct AddTaskRow: View {
             } label: {
                 Label("Aufgabe hinzufügen", systemImage: "plus.circle.fill")
             }
+            .buttonStyle(.borderless)
             .foregroundStyle(color)
         }
     }

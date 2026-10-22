@@ -43,6 +43,8 @@ Eine To-do-App für **wiederkehrende Routinen**. Nutzer legen mehrere Listen an 
 - iCloud-Sync (Phase 6)
 - Statistiken / Streaks / mehrere Analysen (Historie wird bereits gespeichert)
 - Überfällige „alle n Tage“-Listen im Tagesring bis zum nächsten Zeitraum weiter anzeigen
+- Papierkorb („Zuletzt gelöscht“), danach ggf. Löschen ganzer Listen per Wischen
+- Archiv für abgeschlossene einmalige Listen (für Statistiken)
 - Homescreen-Widgets (Progress Ring), interaktive Widgets
 - Siri / Kurzbefehle über App Intents, Control-Center-Steuerelement
 - SF Symbols zusätzlich zu Emojis
@@ -245,6 +247,14 @@ routines/                              Git-Repository
 - **Routinen / Listen:** aktuelle Einträge, darunter einklappbar „Geplant (n)“ (nächste zuerst); bei Listen zusätzlich einklappbar „Abgeschlossen (n)“ (alle To-dos erledigt).
 - **Einstellungen:** Zahnrad oben rechts in allen drei Bereichen.
 - **iPad/Mac:** vorerst unverändert (Seitenleiste mit allen Listen, `HomeView`), wird später überarbeitet.
+
+### 7.0b Aufräumen einmaliger Listen
+- **Detailansicht einer einmaligen Liste:** im Kopf von „Erledigt (n)“ **„Alle löschen“** (mit Rückfrage) – löscht alle erledigten To-dos endgültig. Bei Routinen gibt es den Button nicht.
+- **„Wiederverwenden“** (nur wenn die einmalige Liste komplett erledigt ist): löscht alle To-dos, die Liste ist danach leer und wieder bei den aktuellen Listen. Name, Symbol, Farbe bleiben.
+- **Bereich Listen:** im Kopf von „Abgeschlossen (n)“ **„Alle löschen“** (mit Rückfrage).
+- **Automatisch:** Einstellung „Abgeschlossene löschen“: Nie (Standard) / 1 Tag / 3 Tage / 1 Woche / 2 Wochen / 1 Monat. Frist ab dem letzten abgehakten To-do (`CompletedListCleanup`, keine Modelländerung). Aufgeräumt wird beim Öffnen der App, beim Tageswechsel und beim Ändern der Einstellung. Abgeschlossene Listen zeigen „Wird in n Tagen gelöscht“.
+- Ganze Listen lassen sich **nicht** per Wischen löschen (kein Papierkorb, Schutz vor versehentlichem Löschen).
+- Gelöscht wird endgültig. Ein Archiv für Statistiken über einmalige Listen ist nachrüstbar (optionales Feld `archivedAt`), erfasst aber erst Listen ab Einführung.
 
 ### 7.1 Startbildschirm
 - **Oben:** kompakte **Tageskarte** (Liquid Glass): kleiner Ring links (~92 pt), Text rechts („Heute“, „x von y täglichen To-dos“, „Als Nächstes: <Liste> · <Startzeit>“).

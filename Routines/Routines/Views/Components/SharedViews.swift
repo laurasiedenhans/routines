@@ -3,10 +3,14 @@ import SwiftData
 import RoutineKit
 
 /// Einklappbarer Abschnitt mit Anzahl und Pfeil, z. B. „Geplant (2)“.
+/// Optional mit einer destruktiven Aktion, z. B. „Alle löschen“: nur sichtbar, wenn aufgeklappt,
+/// rechtsbündig unter dem Pfeil und über den Einträgen.
 struct CollapsibleSection<Content: View>: View {
     let title: String
     let count: Int
     @Binding var isExpanded: Bool
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -15,20 +19,29 @@ struct CollapsibleSection<Content: View>: View {
                 content()
             }
         } header: {
-            Button {
-                withAnimation(Theme.Motion.check) { isExpanded.toggle() }
-            } label: {
-                HStack {
-                    Text("\(title) (\(count))")
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            VStack(alignment: .trailing, spacing: Theme.Spacing.s) {
+                Button {
+                    withAnimation(Theme.Motion.check) { isExpanded.toggle() }
+                } label: {
+                    HStack {
+                        Text("\(title) (\(count))")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    }
+                    .contentShape(.rect)
                 }
-                .contentShape(.rect)
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(title), \(count)")
+                .accessibilityHint(isExpanded ? "Einklappen" : "Ausklappen")
+
+                if isExpanded, let actionTitle, let action {
+                    Button(actionTitle, role: .destructive, action: action)
+                        .buttonStyle(.borderless)
+                        .font(.subheadline)
+                        .transition(.opacity)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(title), \(count)")
-            .accessibilityHint(isExpanded ? "Einklappen" : "Ausklappen")
         }
     }
 }

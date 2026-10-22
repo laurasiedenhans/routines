@@ -11,6 +11,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @Environment(AppClock.self) private var clock
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \RoutineList.sortOrder) private var lists: [RoutineList]
     @State private var selection: UUID?
 
@@ -20,6 +21,25 @@ struct ContentView: View {
                 // Pflicht: Apps werden im Hintergrund eingefroren, Timer laufen dann nicht.
                 if phase == .active { clock.refresh() }
             }
+            // Aufräumen beim Öffnen (Uhr wird aktualisiert), beim Tageswechsel und bei geänderter Einstellung.
+            .task(id: "\(clock.now.timeIntervalSince1970)-\(settings.completedListRetention.rawValue)") {
+                removeExpiredLists()
+            }
+    }
+
+    /// Löscht abgeschlossene einmalige Listen, deren Frist abgelaufen ist.
+    private func removeExpiredLists() {
+        let expired = CompletedListCleanup.expiredLists(
+            lists,
+            retention: settings.completedListRetention,
+            now: clock.now
+        )
+        guard !expired.isEmpty else { return }
+        if let selection, expired.contains(where: { $0.id == selection }) {
+            self.selection = nil
+        }
+        for list in expired { context.delete(list) }
+        try? context.save()
     }
 
     @ViewBuilder

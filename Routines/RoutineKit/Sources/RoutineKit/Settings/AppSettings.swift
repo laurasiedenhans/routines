@@ -15,6 +15,11 @@ public final class AppSettings {
         didSet { save() }
     }
 
+    /// Abgeschlossene einmalige Listen löschen nach … (Standard: nie)
+    public var completedListRetention: ListRetention {
+        didSet { save() }
+    }
+
     /// Ausgewählte Listen je Ringstil (Schlüssel = `RingStyle.rawValue`).
     private var selections: [String: [UUID]] {
         didSet { save() }
@@ -33,6 +38,7 @@ public final class AppSettings {
         let stored = defaults.data(forKey: Self.storageKey)
             .flatMap { try? JSONDecoder().decode(Stored.self, from: $0) }
         self.ringStyle = stored?.ringStyle ?? .segmented
+        self.completedListRetention = stored?.completedListRetention ?? .never
         self.selections = stored?.selections ?? [:]
         self.seen = stored?.seen ?? [:]
     }
@@ -96,10 +102,17 @@ public final class AppSettings {
         var ringStyle: RingStyle
         var selections: [String: [UUID]]
         var seen: [String: [UUID]]
+        /// Optional, damit ältere gespeicherte Einstellungen weiter lesbar sind.
+        var completedListRetention: ListRetention?
     }
 
     private func save() {
-        let stored = Stored(ringStyle: ringStyle, selections: selections, seen: seen)
+        let stored = Stored(
+            ringStyle: ringStyle,
+            selections: selections,
+            seen: seen,
+            completedListRetention: completedListRetention
+        )
         if let data = try? JSONEncoder().encode(stored) {
             defaults.set(data, forKey: Self.storageKey)
         }

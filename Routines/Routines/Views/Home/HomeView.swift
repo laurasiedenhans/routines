@@ -143,6 +143,8 @@ struct HomeView: View {
 struct ListRow: View {
     let list: RoutineList
     let status: ListStatus
+    /// Ersetzt den Fortschrittsbalken, z. B. „Wird in 3 Tagen gelöscht“.
+    var footnote: String? = nil
 
     var body: some View {
         HStack(spacing: Theme.Spacing.m) {
@@ -158,7 +160,11 @@ struct ListRow: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                if status.isActive {
+                if let footnote {
+                    Text(footnote)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if status.isActive {
                     ListProgressBar(fraction: status.fraction, color: list.color.color)
                 } else {
                     Text("Startet am \(RecurrenceFormatting.startDate(list.anchorDate))")
