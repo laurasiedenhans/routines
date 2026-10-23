@@ -14,8 +14,11 @@ struct ListDetailView: View {
     @State private var pendingDeletion: RoutineTask?
     @State private var confirmReuse = false
     @State private var confirmClearDone = false
-    @FocusState private var isAddingTask: Bool
-    @State private var addRowFrame: CGRect = .zero
+    @FocusState private var focus: TaskFocus?
+    @State private var editingTaskID: UUID?
+    /// Positionen der Eingabefelder, um „Tippen außerhalb“ zu erkennen. Bewusst kein @State-Wert,
+    /// damit Scrollen keine Neuberechnung der Ansicht auslöst.
+    @State private var frames = FieldFrames()
 
     init(list: RoutineList, onDelete: @escaping () -> Void) {
         _list = Bindable(list)
@@ -62,19 +65,14 @@ struct ListDetailView: View {
 
             Section {
                 ForEach(status.open) { task in
-                    TaskRow(task: task, isDone: false, color: color, isEnabled: status.isActive) {
-                        toggle(task, in: status.period)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        deleteButton(for: task)
-                    }
+                    taskRow(task, isDone: false, color: color, isEnabled: status.isActive, period: status.period)
                 }
                 .onMove { source, destination in
                     move(status.open, from: source, to: destination)
                 }
 
-                AddTaskRow(list: list, period: status.period, color: color, isFocused: $isAddingTask)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { addRowFrame = $0 }
+                AddTaskRow(list: list, period: status.period, color: color, focus: $focus)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames.rects[.newTask] = $0 }
             } footer: {
                 if status.isComplete, !isOneOff {
                     Text("Alles erledigt für diesen Zeitraum.")
@@ -91,25 +89,20 @@ struct ListDetailView: View {
                     action: { confirmClearDone = true }
                 ) {
                     ForEach(status.done) { task in
-                        TaskRow(task: task, isDone: true, color: color) {
-                            toggle(task, in: status.period)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            deleteButton(for: task)
-                        }
+                        taskRow(task, isDone: true, color: color, isEnabled: true, period: status.period)
                     }
                 }
             }
         }
-        // Tippen außerhalb des Eingabefelds beendet die Eingabe (getippter Text wird übernommen).
-        // Nur aktiv, solange das Feld offen ist: sonst fängt die Geste die Zeilen-Buttons ab.
+        // Tippen außerhalb des aktiven Eingabefelds beendet die Eingabe (Text wird übernommen).
+        // Nur aktiv, solange ein Feld offen ist: sonst fängt die Geste die Zeilen-Buttons ab.
         .simultaneousGesture(
             SpatialTapGesture(coordinateSpace: .global).onEnded { tap in
-                if isAddingTask, !addRowFrame.contains(tap.location) {
-                    isAddingTask = false
-                }
+                guard let current = focus else { return }
+                if let rect = frames.rects[current], rect.contains(tap.location) { return }
+                focus = nil
             },
-            including: isAddingTask ? .all : .subviews
+            including: focus != nil ? .all : .subviews
         )
         .scrollDismissesKeyboard(.immediately)
         .navigationTitle("\(list.emoji) \(list.name)")
@@ -158,6 +151,29 @@ struct ListDetailView: View {
             Button("Abbrechen", role: .cancel) {}
         } message: { task in
             Text("„\(task.title)“")
+        }
+    }
+
+    // MARK: - Zeilen
+
+    private func taskRow(_ task: RoutineTask, isDone: Bool, color: Color, isEnabled: Bool, period: Period?) -> some View {
+        TaskRow(
+            task: task,
+            isDone: isDone,
+            color: color,
+            isEnabled: isEnabled,
+            isEditing: editingTaskID == task.id,
+            focus: $focus,
+            onToggle: { toggle(task, in: period) },
+            onStartEditing: { editingTaskID = task.id },
+            onEndEditing: {
+                if editingTaskID == task.id { editingTaskID = nil }
+                save()
+            }
+        )
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames.rects[.task(task.id)] = $0 }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            deleteButton(for: task)
         }
     }
 
@@ -223,19 +239,52 @@ struct ListDetailView: View {
     }
 }
 
-/// Eine To-do-Zeile mit rundem Toggle rechts.
+/// Welches Eingabefeld in der Liste gerade aktiv ist.
+enum TaskFocus: Hashable {
+    case newTask
+    case task(UUID)
+}
+
+/// Bildschirmpositionen der Eingabefelder (Referenztyp, Änderungen lösen kein Neuzeichnen aus).
+final class FieldFrames {
+    var rects: [TaskFocus: CGRect] = [:]
+}
+
+/// Eine To-do-Zeile mit rundem Toggle rechts. Tippen auf den Titel macht ihn bearbeitbar.
 struct TaskRow: View {
     let task: RoutineTask
     let isDone: Bool
     let color: Color
     var isEnabled = true
+    let isEditing: Bool
+    var focus: FocusState<TaskFocus?>.Binding
     let onToggle: () -> Void
+    let onStartEditing: () -> Void
+    let onEndEditing: () -> Void
+
+    @State private var draft = ""
 
     var body: some View {
         HStack(spacing: Theme.Spacing.m) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                Text(task.title)
-                    .foregroundStyle(isDone ? Color.secondary : Color.primary)
+                if isEditing {
+                    TextField("To-do", text: $draft)
+                        .focused(focus, equals: .task(task.id))
+                        .submitLabel(.done)
+                        .onSubmit { focus.wrappedValue = nil }
+                        .onAppear {
+                            draft = task.title
+                            focus.wrappedValue = .task(task.id)
+                        }
+                } else {
+                    Text(task.title)
+                        .foregroundStyle(isDone ? Color.secondary : Color.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(.rect)
+                        .onTapGesture(perform: onStartEditing)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("Zum Bearbeiten tippen")
+                }
                 if task.oneOffPeriodKey != nil {
                     Text("Einmalig")
                         .font(.caption)
@@ -247,20 +296,33 @@ struct TaskRow: View {
                 .disabled(!isEnabled)
                 .opacity(isEnabled ? 1 : 0.4)
         }
-        .accessibilityElement(children: .combine)
+        .onChange(of: focus.wrappedValue) { old, new in
+            guard isEditing, old == .task(task.id), new != .task(task.id) else { return }
+            commit()
+        }
+    }
+
+    /// Übernimmt den neuen Titel. Leerer Titel: alter Text bleibt.
+    private func commit() {
+        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed != task.title {
+            task.title = trimmed
+        }
+        onEndEditing()
     }
 }
 
-/// „+ Aufgabe hinzufügen“ am Ende der Liste, mit Auswahl „Immer / Einmalig“.
+/// „+ Aufgabe hinzufügen“ am Ende der Liste.
 ///
-/// Verhalten wie in der Erinnerungen-App: Return fügt hinzu und bleibt für das nächste To-do offen.
+/// Verhalten wie in der Erinnerungen-App: Die Eingabezeile sieht aus wie ein To-do. Return fügt das
+/// To-do genau an dieser Stelle ein (ohne Schiebeanimation) und öffnet darunter die nächste leere Zeile.
 /// Verliert das Feld den Fokus (Tippen außerhalb, Scrollen), wird getippter Text übernommen
 /// und die Eingabe geschlossen. Ein leeres Feld schließt sich einfach.
 struct AddTaskRow: View {
     let list: RoutineList
     let period: Period?
     let color: Color
-    @FocusState.Binding var isFocused: Bool
+    var focus: FocusState<TaskFocus?>.Binding
 
     @Environment(\.modelContext) private var context
     @Environment(AppClock.self) private var clock
@@ -270,14 +332,24 @@ struct AddTaskRow: View {
 
     var body: some View {
         if isEditing {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                TextField("Neue Aufgabe", text: $title)
-                    .focused($isFocused)
-                    .submitLabel(.next)
-                    .onSubmit {
-                        add()
-                        isFocused = true
-                    }
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                // Eingabezeile im Stil eines To-dos: Beim Hinzufügen wird sie nahtlos zum To-do.
+                HStack(spacing: Theme.Spacing.m) {
+                    TextField("Neue Aufgabe", text: $title)
+                        .focused(focus, equals: .newTask)
+                        .submitLabel(.next)
+                        .onSubmit {
+                            add()
+                            focus.wrappedValue = .newTask
+                        }
+
+                    // Platzhalter im Stil des Toggles, damit die Zeile genauso hoch ist wie ein To-do
+                    Image(systemName: "circle")
+                        .font(.system(size: Theme.Check.size))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: Theme.Check.hitArea, height: Theme.Check.hitArea)
+                        .accessibilityHidden(true)
+                }
 
                 if showsFrequencyChoice {
                     Picker("Häufigkeit", selection: $isOneOff) {
@@ -286,15 +358,15 @@ struct AddTaskRow: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                    .padding(.bottom, Theme.Spacing.xs)
                 }
             }
-            .padding(.vertical, Theme.Spacing.xs)
-            .onAppear { isFocused = true }
-            .onChange(of: isFocused) { _, focused in
-                guard !focused else { return }
+            .onAppear { focus.wrappedValue = .newTask }
+            .onChange(of: focus.wrappedValue) { _, newValue in
+                guard newValue != .newTask else { return }
                 // Nach Return holt sich das Feld den Fokus sofort zurück: dann nicht schließen.
                 DispatchQueue.main.async {
-                    if !isFocused { finish() }
+                    if focus.wrappedValue != .newTask { finish() }
                 }
             }
         } else {
@@ -321,11 +393,14 @@ struct AddTaskRow: View {
         let text = trimmedTitle
         guard !text.isEmpty else { return }
         let oneOffKey = (isOneOff && showsFrequencyChoice) ? period?.key : nil
-        withAnimation(Theme.Motion.check) {
+        // Ohne Animation: Das To-do erscheint genau dort, wo getippt wurde, die Eingabe rutscht eine Zeile tiefer.
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
             context.addTask(text, to: list, oneOffPeriodKey: oneOffKey, at: clock.now)
+            title = ""
         }
         try? context.save()
-        title = ""
     }
 
     /// Übernimmt getippten Text und schließt die Eingabe.

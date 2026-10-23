@@ -254,6 +254,7 @@ routines/                              Git-Repository
 - **Heute (Daily Dashboard):** Tageskarte mit Ring (Ringauswahl aus den Einstellungen), darunter „Heute fällig“ = alle täglichen Routinen (auch „alle n Tage“), deren Zeitraum heute beginnt, unabhängig von der Ringauswahl. Keine wöchentlichen, monatlichen, jährlichen oder einmaligen Listen. Später personalisierbar.
 - **Routinen / Listen:** aktuelle Einträge, darunter einklappbar „Geplant (n)“ (nächste zuerst); bei Listen zusätzlich einklappbar „Abgeschlossen (n)“ (alle To-dos erledigt).
 - **Einstellungen:** Zahnrad oben rechts in allen drei Bereichen.
+- **Liquid Glass auf Listen-Containern:** verworfen (ausprobiert und rückgängig gemacht). SwiftUI bietet keine API für einen Glass-Hintergrund ganzer `List`-Abschnitte, nur pro Zeile; ein Nachbau ohne `List` verliert Umsortieren und Wischen. Apple sieht Liquid Glass zudem für die schwebende Navigations-/Steuerebene vor (Tab-Leiste, Toolbars, Buttons, Sheets), nicht für Inhalte wie Listen. Glass bleibt daher bei Tageskarte und Navigationsleiste.
 - **iPad/Mac:** vorerst unverändert (Seitenleiste mit allen Listen, `HomeView`), wird später überarbeitet.
 
 ### 7.0b Aufräumen einmaliger Listen
@@ -303,7 +304,8 @@ routines/                              Git-Repository
 - Abhaken → Toggle wird ausgefüllt, To-do wandert animiert in den eingeklappten Bereich **„Erledigt (n)“** am Ende (ausklappbar, standardmäßig zu).
 - Erneutes Tippen auf einen ausgefüllten Toggle → To-do wird wieder offen und rutscht nach oben.
 - **Swipe nach links** → „Löschen“ → `confirmationDialog`: „Nur heute löschen“ / „Alle zukünftigen löschen“ / „Abbrechen“.
-- Am Listenende: **„+ Aufgabe hinzufügen“** → Textfeld + Auswahl **„Immer / Einmalig“** (Segmented Control), **ohne Buttons** wie in der Erinnerungen-App: Return fügt hinzu und bleibt offen für das nächste To-do; Tippen außerhalb des Felds oder Scrollen übernimmt getippten Text und schließt die Eingabe; leeres Feld schließt einfach.
+- Am Listenende: **„+ Aufgabe hinzufügen“** → Eingabezeile im Stil eines To-dos (gleiche Höhe, leerer Kreis rechts), daneben ein kleiner Knopf **„Immer / Einmalig“** zum Umschalten, **ohne Buttons** wie in der Erinnerungen-App: Return fügt das To-do ohne Schiebeanimation genau an dieser Stelle ein und öffnet darunter die nächste leere Zeile; Tippen außerhalb des Felds oder Scrollen übernimmt getippten Text und schließt die Eingabe; leeres Feld schließt einfach.
+- **To-do bearbeiten:** Tippen auf den Titel macht ihn zum Eingabefeld. Return oder Tippen außerhalb speichert. Leerer Titel: alter Text bleibt.
 - Reihenfolge per Drag & Drop änderbar (`sortOrder`).
 - **Oben rechts: Zahnrad** → Listen-Einstellungen.
 
