@@ -26,6 +26,17 @@ struct TaskVisibilityTests {
         #expect(TaskVisibility.isVisible(deletedAt: deletedAt, oneOffPeriodKey: nil, isSkipped: false, in: lastWeek))
     }
 
+    @Test func permanentTaskHiddenBeforeItWasCreated() {
+        let createdAt = date(2026, 10, 20)
+        #expect(!TaskVisibility.isVisible(createdAt: createdAt, deletedAt: nil, oneOffPeriodKey: nil, isSkipped: false, in: lastWeek))
+        #expect(TaskVisibility.isVisible(createdAt: createdAt, deletedAt: nil, oneOffPeriodKey: nil, isSkipped: false, in: today))
+    }
+
+    @Test func oneOffTaskAddedLaterStaysVisibleInPastPeriod() {
+        // Nachträglich für letzte Woche eingeplant: muss dort sichtbar sein
+        #expect(TaskVisibility.isVisible(createdAt: date(2026, 10, 21), deletedAt: nil, oneOffPeriodKey: lastWeek.key, isSkipped: false, in: lastWeek))
+    }
+
     @Test func deletedTaskInListWithoutRepetitionIsHidden() {
         let open = Period(start: date(2026, 10, 1, 0), end: nil, key: key(2026, 10, 1))
         #expect(!TaskVisibility.isVisible(deletedAt: date(2026, 10, 5), oneOffPeriodKey: nil, isSkipped: false, in: open))

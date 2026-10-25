@@ -56,6 +56,18 @@ public enum Theme {
         public static var contentClearance: CGFloat { addButtonSize + bottomPadding + 16 }
     }
 
+    /// Zeitraum-Leiste in einer Liste (Blättern)
+    public enum Strip {
+        public static var chipHeight: CGFloat { 64 }
+        public static var chipRadius: CGFloat { 16 }
+        public static var chipSpacing: CGFloat { 2 }
+        public static var dotSize: CGFloat { 5 }
+        /// Hintergrund des aktuellen Zeitraums, wenn ein anderer ausgewählt ist
+        public static var currentOpacity: Double { 0.14 }
+        /// Mindestweg für Wischen zum Blättern
+        public static var swipeThreshold: CGFloat { 40 }
+    }
+
     /// Farbauswahl in den Listen-Einstellungen
     public enum ColorPicker {
         /// Farben pro Zeile, danach wird umgebrochen

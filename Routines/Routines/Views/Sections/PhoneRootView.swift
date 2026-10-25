@@ -46,6 +46,7 @@ struct PhoneRootView: View {
     @State private var section: AppSection = .today
     @State private var creating: ListKind?
     @State private var isKeyboardVisible = false
+    @State private var quickAdd = QuickAddCenter()
 
     var body: some View {
         Group {
@@ -58,13 +59,19 @@ struct PhoneRootView: View {
                 SectionStack { CollectionView(kind: .list) }
             }
         }
+        .environment(quickAdd)
         // Inhalte laufen unter der Leiste durch, lassen sich aber bis über die Leiste scrollen.
         .contentMargins(.bottom, Theme.TabBar.contentClearance, for: .scrollContent)
         .overlay(alignment: .bottom) {
             // Beim Tippen ausblenden, sonst schwebt die Leiste über der Tastatur.
             if !isKeyboardVisible {
-                BottomBar(section: $section, addLabel: section.newKind.newTitle) {
-                    creating = section.newKind
+                // In einer Liste öffnet das „+“ die Eingabezeile, auf den Übersichten legt es eine neue Liste an.
+                BottomBar(section: $section, addLabel: quickAdd.activeListID != nil ? "Neue Aufgabe" : section.newKind.newTitle) {
+                    if quickAdd.activeListID != nil {
+                        quickAdd.requestAdd()
+                    } else {
+                        creating = section.newKind
+                    }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }

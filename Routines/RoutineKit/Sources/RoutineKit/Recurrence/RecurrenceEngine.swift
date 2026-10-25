@@ -19,21 +19,42 @@ public struct RecurrenceEngine: Sendable {
 
     /// Der Zeitraum, der `date` enthält, oder `nil`, wenn die Liste an diesem Tag noch nicht aktiv ist.
     public func period(for rule: RecurrenceRule, containing date: Date) -> Period? {
+        guard let k = periodIndex(for: rule, containing: date) else { return nil }
+        return period(for: rule, index: k)
+    }
+
+    /// Nummer des Zeitraums, der `date` enthält (0 = erster Zeitraum), oder `nil` vor dem Starttag.
+    public func periodIndex(for rule: RecurrenceRule, containing date: Date) -> Int? {
         let day = startOfDay(date)
         guard day >= startOfDay(rule.anchor) else { return nil }
+        if rule.kind == .none { return 0 }
 
         let first = firstPeriodStart(for: rule)
-        if rule.kind == .none {
-            return Period(start: first, end: nil, key: key(for: first))
-        }
-
         var k = estimatedIndex(for: rule, first: first, day: day)
         while k > 0, let start = periodStart(index: k, for: rule), start > day { k -= 1 }
         while let next = periodStart(index: k + 1, for: rule), next <= day { k += 1 }
+        return k
+    }
 
+    /// Der k-te Zeitraum, z. B. zum Blättern in die Vergangenheit oder Zukunft.
+    public func period(for rule: RecurrenceRule, index k: Int) -> Period? {
         guard let start = periodStart(index: k, for: rule) else { return nil }
-        let end = periodStart(index: k + 1, for: rule)
+        let end = rule.kind == .none ? nil : periodStart(index: k + 1, for: rule)
         return Period(start: start, end: end, key: key(for: start))
+    }
+
+    /// Tag in der Mitte des Zeitraums. Danach wird ein Zeitraum benannt (Woche, Monat, Jahr),
+    /// denn er liegt größtenteils in derselben Einheit wie seine Mitte.
+    /// Beispiel: 30.09.–29.10. → Mitte 15.10. → „Okt“.
+    public func representativeDate(of period: Period) -> Date {
+        guard let end = period.end else { return period.start }
+        return addDays(daysBetween(period.start, end) / 2, to: period.start)
+    }
+
+    /// Letzter Tag eines Zeitraums (das Ende ist exklusiv), `nil` ohne Ende.
+    public func lastDay(of period: Period) -> Date? {
+        guard let end = period.end else { return nil }
+        return addDays(-1, to: end)
     }
 
     /// `true`, wenn an `date` ein neuer Zeitraum beginnt („heute fällig“).

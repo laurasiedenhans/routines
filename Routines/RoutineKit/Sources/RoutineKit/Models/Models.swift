@@ -157,6 +157,7 @@ public extension RoutineTask {
 
     func isVisible(in period: Period) -> Bool {
         TaskVisibility.isVisible(
+            createdAt: createdAt,
             deletedAt: deletedAt,
             oneOffPeriodKey: oneOffPeriodKey,
             isSkipped: isSkipped(in: period),

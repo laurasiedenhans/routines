@@ -128,6 +128,44 @@ struct RecurrenceEngineTests {
         #expect(engine.nextPeriodStart(after: date(2027, 1, 1), for: r) == nil)
     }
 
+    // MARK: Blättern und Benennung
+
+    @Test func periodIndexAndPeriodByIndex() throws {
+        let r = rule(.daily, every: 2, from: date(2026, 10, 1))
+        let k = try #require(engine.periodIndex(for: r, containing: date(2026, 10, 23)))
+        #expect(k == 11)
+        #expect(try #require(engine.period(for: r, index: k)).key == key(2026, 10, 23))
+        #expect(try #require(engine.period(for: r, index: k + 1)).key == key(2026, 10, 25))
+        #expect(try #require(engine.period(for: r, index: 0)).key == key(2026, 10, 1))
+        #expect(engine.period(for: r, index: -1) == nil)
+        #expect(engine.periodIndex(for: r, containing: date(2026, 9, 30)) == nil)
+    }
+
+    @Test func monthlyPeriodIsNamedAfterItsMajorityMonth() throws {
+        let r = rule(.monthly, from: date(2026, 1, 30))
+        let period = try #require(engine.period(for: r, containing: date(2026, 10, 23)))
+        #expect(period.key == key(2026, 9, 30))
+        let middle = engine.representativeDate(of: period)
+        #expect(Calendar.berlin.component(.month, from: middle) == 10)
+        #expect(engine.lastDay(of: period) == date(2026, 10, 29, 0))
+    }
+
+    @Test func weeklyPeriodIsNamedAfterItsMajorityWeek() throws {
+        // Donnerstag bis Mittwoch: 4 von 7 Tagen liegen in der KW, in der die Woche beginnt
+        let r = rule(.weekly, weekday: 5, from: date(2026, 10, 1))
+        let period = try #require(engine.period(for: r, containing: date(2026, 10, 23)))
+        #expect(period.key == key(2026, 10, 22))
+        var iso = Calendar(identifier: .iso8601)
+        iso.timeZone = Calendar.berlin.timeZone
+        #expect(iso.component(.weekOfYear, from: engine.representativeDate(of: period)) == 43)
+    }
+
+    @Test func noneHasOnlyIndexZero() {
+        let r = rule(.none, from: date(2026, 10, 1))
+        #expect(engine.period(for: r, index: 0)?.end == nil)
+        #expect(engine.period(for: r, index: 1) == nil)
+    }
+
     // MARK: Sonstiges
 
     @Test func nextPeriodStartForFutureList() {

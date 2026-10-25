@@ -83,6 +83,107 @@ enum RecurrenceFormatting {
     }
 }
 
+// MARK: - Zeiträume benennen (Blättern)
+
+/// Texte für die Zeitraum-Leiste. Wochen, Monate und Jahre werden nach der Einheit benannt,
+/// in der der Zeitraum größtenteils liegt (`RecurrenceEngine.representativeDate`).
+enum PeriodFormatting {
+    private static let weekdays = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+    private static let months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+
+    /// Wie viele Zeiträume die Leiste auf einmal zeigt.
+    static func stripCount(for kind: RecurrenceKind) -> Int {
+        switch kind {
+        case .monthly, .yearly: 5
+        default: 7
+        }
+    }
+
+    /// Überschrift über der Leiste: „Heute“, „Diese Woche“ … bzw. „Do 23.10.2026“, „KW 44 2026“, „Okt 2026“, „2027“.
+    static func title(kind: RecurrenceKind, period: Period, isCurrent: Bool, engine: RecurrenceEngine) -> String {
+        if isCurrent { return currentTitle(kind: kind) }
+        let cal = engine.calendar
+        let middle = engine.representativeDate(of: period)
+        switch kind {
+        case .none:
+            return ""
+        case .daily:
+            return dayString(period.start, calendar: cal, withYear: true)
+        case .weekly:
+            let (week, year) = isoWeek(of: middle, calendar: cal)
+            return "KW \(week) \(year)"
+        case .monthly:
+            return "\(months[cal.component(.month, from: middle) - 1]) \(cal.component(.year, from: middle))"
+        case .yearly:
+            return "\(cal.component(.year, from: middle))"
+        }
+    }
+
+    static func currentTitle(kind: RecurrenceKind) -> String {
+        switch kind {
+        case .none, .daily: "Heute"
+        case .weekly: "Diese Woche"
+        case .monthly: "Diesen Monat"
+        case .yearly: "Dieses Jahr"
+        }
+    }
+
+    /// Beschriftung eines Kästchens in der Leiste: klein oben, groß darunter.
+    static func chip(kind: RecurrenceKind, period: Period, engine: RecurrenceEngine) -> (top: String, main: String) {
+        let cal = engine.calendar
+        let middle = engine.representativeDate(of: period)
+        switch kind {
+        case .none:
+            return ("", "")
+        case .daily:
+            return (weekdays[cal.component(.weekday, from: period.start) - 1], "\(cal.component(.day, from: period.start))")
+        case .weekly:
+            return ("KW", "\(isoWeek(of: middle, calendar: cal).week)")
+        case .monthly:
+            return ("\(cal.component(.year, from: middle))", months[cal.component(.month, from: middle) - 1])
+        case .yearly:
+            let c = cal.dateComponents([.day, .month], from: period.start)
+            return (String(format: "%02d.%02d.", c.day ?? 0, c.month ?? 0), "\(cal.component(.year, from: middle))")
+        }
+    }
+
+    /// Genauer Zeitraum unter der Leiste, z. B. „Do 22.10. – Mi 28.10.“. `nil` bei eintägigen Zeiträumen.
+    static func range(kind: RecurrenceKind, period: Period, engine: RecurrenceEngine) -> String? {
+        guard let last = engine.lastDay(of: period), last > period.start else { return nil }
+        let cal = engine.calendar
+        switch kind {
+        case .none:
+            return nil
+        case .daily, .weekly:
+            return "\(dayString(period.start, calendar: cal, withYear: false)) – \(dayString(last, calendar: cal, withYear: false))"
+        case .monthly:
+            return "\(shortDate(period.start, calendar: cal)) – \(shortDate(last, calendar: cal))"
+        case .yearly:
+            return "\(shortDate(period.start, calendar: cal))\(cal.component(.year, from: period.start)) – \(shortDate(last, calendar: cal))\(cal.component(.year, from: last))"
+        }
+    }
+
+    // MARK: Hilfen
+
+    static func dayString(_ date: Date, calendar: Calendar, withYear: Bool) -> String {
+        let c = calendar.dateComponents([.weekday, .day, .month, .year], from: date)
+        let weekday = weekdays[(c.weekday ?? 1) - 1]
+        let base = String(format: "%@ %02d.%02d.", weekday, c.day ?? 0, c.month ?? 0)
+        return withYear ? base + String(format: "%04d", c.year ?? 0) : base
+    }
+
+    private static func shortDate(_ date: Date, calendar: Calendar) -> String {
+        let c = calendar.dateComponents([.day, .month], from: date)
+        return String(format: "%02d.%02d.", c.day ?? 0, c.month ?? 0)
+    }
+
+    private static func isoWeek(of date: Date, calendar: Calendar) -> (week: Int, year: Int) {
+        var iso = Calendar(identifier: .iso8601)
+        iso.timeZone = calendar.timeZone
+        return (iso.component(.weekOfYear, from: date), iso.component(.yearForWeekOfYear, from: date))
+    }
+}
+
 extension RecurrenceKind {
     var displayName: String {
         switch self {
