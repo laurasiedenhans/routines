@@ -6,9 +6,9 @@ Routines is a native SwiftUI app for iPhone, iPad and Mac. It's built around rec
 
 > 🧪 **Status:** Routines is in active development and is currently being tested on the simulator and on my own iPhone. It's not available on the App Store yet.
 
-![Home screen with the daily progress ring – segmented and nested style](Docs/Images/home-rings.png)
+![Today screen with the daily progress ring in two styles, and the routines overview](Docs/Images/home-rings.png)
 
-*Design mockups of the home screen: the daily progress card in two of the selectable ring styles.*
+*The Today screen with two of the selectable ring styles, and the overview of all routines.*
 
 ---
 
@@ -34,7 +34,7 @@ So I started building the app I wanted to use myself.
 
 ![Period strip for daily, weekly, monthly and yearly lists](Docs/Images/period-paging.png)
 
-*Design mockups of the period strip: daily (one calendar week), weekly, monthly and yearly lists.*
+*The period strip for a daily (one calendar week), weekly, monthly and yearly list.*
 
 **Flexible recurrence.** Daily, weekly, monthly or yearly, each also as "every n days/weeks/months/years". Weekly lists reset on a weekday of your choice, monthly lists keep their anchor day (a list that starts on the 31st resets on the last day of shorter months), and every list can have an optional start time.
 
@@ -44,6 +44,10 @@ So I started building the app I wanted to use myself.
 - choose the **ring style** for your daily progress card and pick **which routines count** towards it,
 - set the app's **accent colour** and switch between **light, dark or system** appearance,
 - choose whether completed one-off lists **clean themselves up** automatically after a while.
+
+![Editing a routine's emoji and colour, and a one-off list](Docs/Images/customize.png)
+
+*Picking an emoji and colour for a routine, and a one-off moving list in its own colour.*
 
 **Built to feel native.** Liquid Glass navigation, inline editing like in Reminders (tap a title to edit, press return to add the next task), drag-and-drop reordering and swipe-to-delete with "only this time / all future" options.
 
@@ -86,7 +90,7 @@ All data stays on your device. There are no accounts, no analytics and no server
 ```
 Docs/
   PROJECT.md            Spec, architecture and conventions – read this first
-  Images/               Mockups used in this README
+  Images/               Screenshots used in this README
 Routines/
   Routines.xcodeproj    Xcode project
   Routines/             App target (SwiftUI views)

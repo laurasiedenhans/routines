@@ -205,7 +205,7 @@ routines/                              Git repository
 ├── README.md
 ├── Docs/
 │   ├── PROJECT.md                     this file
-│   └── Images/                        mockups used in the README
+│   └── Images/                        screenshots used in the README
 └── Routines/
     ├── Routines.xcodeproj
     ├── RoutineKit/                    local Swift package ("backend")
