@@ -101,7 +101,7 @@ Routines/
 
 - Open `Routines/Routines.xcodeproj` in Xcode.
 - **Tests:** select the scheme "RoutineKit", destination "My Mac", then press ⌘U.
-- **Simulator with sample data:** select the scheme "Routines (Testdaten)" (launch argument `-sampleData`).
+- **Simulator with sample data:** select the scheme "Routines (sampleData)" (launch argument `-sampleData`).
 
 ## License
 

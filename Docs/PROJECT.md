@@ -431,7 +431,7 @@ List with a start time: triggers **on the first day of each period at the start 
 |---|---|---|
 | Unit tests | `RoutineKit/Tests` (Swift Testing) | Scheme "RoutineKit", destination "My Mac", ⌘U. Fixed time zone Europe/Berlin. Covered: recurrence logic (month anchor, leap year, daylight saving time, intervals, period index, naming by majority), ring selection, visibility, emoji input. |
 | Previews | every view | `previewEnvironment()` with in-memory sample data |
-| Simulator with sample data | Scheme "Routines (Testdaten)" | Launch argument `-sampleData`: fresh in-memory database + separate settings on every launch, real data untouched |
+| Simulator with sample data | Scheme "Routines (sampleData)" | Launch argument `-sampleData`: fresh in-memory database + separate settings on every launch, real data untouched |
 | Developer section | Settings (debug only) | Time travel (+1 h, +1 day, 23:59, reset), add sample data, delete all data |
 
 **Sample data set (`SampleData`)**, generated relative to the current date:
