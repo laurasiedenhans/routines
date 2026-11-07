@@ -1,5 +1,9 @@
 import SwiftUI
 import SwiftData
+import Combine
+#if os(iOS)
+import UIKit
+#endif
 import RoutineKit
 
 /// Alle To-dos einer Liste. Erledigte wandern in den einklappbaren Bereich „Erledigt“.
@@ -29,6 +33,11 @@ struct ListDetailView: View {
     /// Positionen der Eingabefelder, um „Tippen außerhalb“ zu erkennen. Bewusst kein @State-Wert,
     /// damit Scrollen keine Neuberechnung der Ansicht auslöst.
     @State private var frames = FieldFrames()
+    /// Oberkante der Tastatur samt Vorschlagsleiste (globale Koordinaten), `nil` = ausgeblendet
+    @State private var keyboardTop: CGFloat?
+    /// Unsichtbarer Platz unter der Eingabezeile, damit sie sich weit genug hochschieben lässt
+    @State private var keyboardSpacer: CGFloat = 0
+    @State private var liftTask: Task<Void, Never>?
 
     init(list: RoutineList, onDelete: @escaping () -> Void) {
         _list = Bindable(list)
@@ -125,6 +134,19 @@ struct ListDetailView: View {
                 }
             }
 
+            // Platzhalter unter der Eingabezeile, nur während getippt wird: Ziel für das Hochschieben.
+            if focus == .newTask, keyboardTop != nil {
+                Section {
+                    Color.clear
+                        .frame(height: max(keyboardSpacer, 1))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                        .accessibilityHidden(true)
+                        .id(Self.keyboardSpacerID)
+                }
+            }
+
             if !status.done.isEmpty {
                 // „Alle löschen“ nur bei einmaligen Listen: bei Routinen kommen erledigte To-dos wieder.
                 CollapsibleSection(
@@ -150,13 +172,26 @@ struct ListDetailView: View {
             },
             including: focus != nil ? .all : .subviews
         )
+        .environment(\.defaultMinListRowHeight, 0)
         .scrollDismissesKeyboard(.immediately)
         // Eingabezeile samt „Immer / Einmalig“ über die Tastatur schieben: beim Öffnen und nach jedem Hinzufügen.
         .onChange(of: focus) { _, newValue in
-            if newValue == .newTask { scrollToAddRow(proxy) }
+            if newValue == .newTask {
+                scrollToAddRow(proxy)
+            } else {
+                keyboardSpacer = 0
+            }
         }
         .onChange(of: status.open.count) { _, _ in
             if focus == .newTask { scrollToAddRow(proxy) }
+        }
+        .onKeyboardFrameChange { top in
+            keyboardTop = top
+            if top == nil { keyboardSpacer = 0 }
+        }
+        // Erst wenn die Tastatur samt Vorschlagsleiste ganz da ist, nachmessen und hochschieben.
+        .onKeyboardDidShow {
+            if focus == .newTask { liftAddRow(proxy) }
         }
         // „+“ der Navigationsleiste: Eingabezeile öffnen wie „Aufgabe hinzufügen“
         .onChange(of: quickAdd?.requestToken) { _, _ in
@@ -228,13 +263,46 @@ struct ListDetailView: View {
     }
 
     private static let addRowID = "addTaskRow"
+    private static let keyboardSpacerID = "keyboardSpacer"
 
-    /// Wartet kurz, bis die Tastatur eingeblendet ist, und scrollt dann die ganze Eingabezeile ins Bild.
+    /// Wartet kurz, bis die Tastatur eingeblendet ist, scrollt die Eingabezeile ins Bild
+    /// und schiebt sie dann genau über die Tastatur.
     private func scrollToAddRow(_ proxy: ScrollViewProxy) {
         Task {
             try? await Task.sleep(for: .milliseconds(350))
-            withAnimation(Theme.Motion.check) {
-                proxy.scrollTo(Self.addRowID, anchor: .bottom)
+            if keyboardTop == nil || keyboardSpacer == 0 {
+                withAnimation(Theme.Motion.check) {
+                    proxy.scrollTo(Self.addRowID, anchor: .bottom)
+                }
+            }
+            liftAddRow(proxy)
+        }
+    }
+
+    /// Schiebt die ganze Eingabezeile samt „Immer / Einmalig“ so hoch, dass zwischen ihr und der
+    /// Tastatur (inkl. Vorschlagsleiste) `Theme.Keyboard.gap` Abstand bleibt.
+    ///
+    /// Statt zu schätzen, wird gemessen: Unterkante der Zeile gegen Oberkante der Tastatur.
+    /// Der unsichtbare Platzhalter darunter wird so lange angepasst, bis es passt (meist ein Durchgang).
+    private func liftAddRow(_ proxy: ScrollViewProxy) {
+        liftTask?.cancel()
+        liftTask = Task {
+            for _ in 0..<4 {
+                // Mit Platzhalter: erst an ihm ausrichten, dann messen (sonst verfälschen neue Zeilen die Messung).
+                if keyboardSpacer > 0 {
+                    withAnimation(Theme.Motion.check) {
+                        proxy.scrollTo(Self.keyboardSpacerID, anchor: .bottom)
+                    }
+                }
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled, focus == .newTask,
+                      let keyboardTop, let row = frames.rects[.newTask] else { return }
+                // > 0: Zeile zu tief (verdeckt oder zu knapp), < 0: Zeile höher als nötig
+                let overlap = row.maxY + Theme.Keyboard.gap - keyboardTop
+                if abs(overlap) < 2 { return }
+                if overlap < 0, keyboardSpacer == 0 { return }
+                keyboardSpacer = max(0, keyboardSpacer + overlap)
+                try? await Task.sleep(for: .milliseconds(30))
             }
         }
     }
@@ -465,6 +533,38 @@ struct ListDetailView: View {
             get: { pendingDeletion != nil },
             set: { if !$0 { pendingDeletion = nil } }
         )
+    }
+}
+
+extension View {
+    /// Wird aufgerufen, sobald die Tastatur vollständig eingeblendet ist (nur iOS).
+    @ViewBuilder
+    func onKeyboardDidShow(perform action: @escaping () -> Void) -> some View {
+        #if os(iOS)
+        onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+            action()
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// Meldet die Oberkante der Tastatur (inkl. Vorschlagsleiste) in globalen Koordinaten,
+    /// `nil` wenn sie ausgeblendet ist (nur iOS).
+    @ViewBuilder
+    func onKeyboardFrameChange(perform action: @escaping (CGFloat?) -> Void) -> some View {
+        #if os(iOS)
+        onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+            let screenHeight = (note.object as? UIScreen)?.bounds.height ?? frame.maxY
+            action(frame.minY < screenHeight - 1 ? frame.minY : nil)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            action(nil)
+        }
+        #else
+        self
+        #endif
     }
 }
 

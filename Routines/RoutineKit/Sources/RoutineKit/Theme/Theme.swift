@@ -68,6 +68,12 @@ public enum Theme {
         public static var swipeThreshold: CGFloat { 40 }
     }
 
+    /// Eingabe über der Tastatur
+    public enum Keyboard {
+        /// Abstand zwischen Eingabezeile (inkl. „Immer / Einmalig“) und Tastatur samt Vorschlagsleiste
+        public static var gap: CGFloat { 12 }
+    }
+
     /// Farbauswahl in den Listen-Einstellungen
     public enum ColorPicker {
         /// Farben pro Zeile, danach wird umgebrochen
