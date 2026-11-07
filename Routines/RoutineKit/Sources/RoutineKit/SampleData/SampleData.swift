@@ -172,6 +172,15 @@ public enum SampleData {
                               anchor: day(5), start: (19, 0))
         _ = addTasks(["Vokabeln wiederholen", "Lektion durcharbeiten"], to: course)
 
+        // Kategorien: „Fitness“ nur mit Routinen, „Zuhause“ gemischt mit Routinen und einer Liste
+        let fitness = context.addCategory("Fitness", emoji: "💪", at: day(-20))
+        training.category = fitness
+        meditation.category = fitness
+        let home = context.addCategory("Zuhause", emoji: "🏠", at: day(-10))
+        household.category = home
+        plants.category = home
+        move.category = home
+
         try? context.save()
     }
 }

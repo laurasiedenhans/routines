@@ -5,7 +5,7 @@ import SwiftData
 public enum RoutinePersistence {
 
     public static func schema() -> Schema {
-        Schema([RoutineList.self, RoutineTask.self, TaskRecord.self])
+        Schema([RoutineList.self, RoutineTask.self, TaskRecord.self, ListCategory.self])
     }
 
     /// `groupContainer: .automatic` nutzt automatisch die App Group, sobald sie in den

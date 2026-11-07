@@ -47,6 +47,7 @@ struct PhoneRootView: View {
     @State private var creating: ListKind?
     @State private var isKeyboardVisible = false
     @State private var quickAdd = QuickAddCenter()
+    @State private var showNewCategory = false
 
     var body: some View {
         Group {
@@ -66,16 +67,23 @@ struct PhoneRootView: View {
             // Beim Tippen ausblenden, sonst schwebt die Leiste über der Tastatur.
             if !isKeyboardVisible {
                 // In einer Liste öffnet das „+“ die Eingabezeile, auf den Übersichten legt es eine neue Liste an.
-                BottomBar(section: $section, addLabel: quickAdd.activeListID != nil ? "Neue Aufgabe" : section.newKind.newTitle) {
-                    if quickAdd.activeListID != nil {
-                        quickAdd.requestAdd()
-                    } else {
-                        creating = section.newKind
-                    }
-                }
+                // Auf den Übersichten fragt das „+“ per Menü: neue Routine/Liste oder neue Kategorie.
+                BottomBar(
+                    section: $section,
+                    addLabel: quickAdd.activeListID != nil ? "Neue Aufgabe" : section.newKind.newTitle,
+                    onAdd: {
+                        if quickAdd.activeListID != nil {
+                            quickAdd.requestAdd()
+                        } else {
+                            creating = section.newKind
+                        }
+                    },
+                    onAddCategory: quickAdd.activeListID == nil ? { showNewCategory = true } : nil
+                )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .newCategoryAlert(isPresented: $showNewCategory)
         .sheet(item: $creating) { kind in
             NavigationStack {
                 ListSettingsView(mode: .create(kind))
@@ -103,6 +111,8 @@ struct BottomBar: View {
     @Binding var section: AppSection
     let addLabel: String
     let onAdd: () -> Void
+    /// Gesetzt = „+“ öffnet ein Menü mit „Neue Kategorie“ als zweiter Option.
+    var onAddCategory: (() -> Void)? = nil
 
     @Namespace private var selectionNamespace
 
@@ -119,20 +129,41 @@ struct BottomBar: View {
 
                 Spacer(minLength: Theme.Spacing.m)
 
-                Button(action: onAdd) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.tint)
-                        .frame(width: Theme.TabBar.addButtonSize, height: Theme.TabBar.addButtonSize)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Circle())
-                .accessibilityLabel(addLabel)
+                addButton
+                    .glassEffect(.regular.interactive(), in: Circle())
             }
             .padding(.horizontal, Theme.TabBar.edgePadding)
             .padding(.bottom, Theme.TabBar.bottomPadding)
         }
+    }
+
+    @ViewBuilder
+    private var addButton: some View {
+        if let onAddCategory {
+            Menu {
+                Button(addLabel, systemImage: "checklist", action: onAdd)
+                Button("Neue Kategorie", systemImage: "folder", action: onAddCategory)
+            } label: {
+                plusLabel
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Hinzufügen")
+        } else {
+            Button(action: onAdd) {
+                plusLabel
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(addLabel)
+        }
+    }
+
+    private var plusLabel: some View {
+        Image(systemName: "plus")
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(.tint)
+            .frame(width: Theme.TabBar.addButtonSize, height: Theme.TabBar.addButtonSize)
+            .contentShape(Circle())
     }
 
     private func tabButton(for item: AppSection) -> some View {

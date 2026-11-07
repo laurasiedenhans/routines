@@ -16,7 +16,9 @@ struct ListSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Query(sort: \RoutineList.sortOrder) private var lists: [RoutineList]
+    @Query(sort: \ListCategory.sortOrder) private var categories: [ListCategory]
     @State private var draft: ListDraft
+    @State private var showNewCategory = false
     @State private var customEmoji = ""
     @State private var confirmDelete = false
 
@@ -67,6 +69,18 @@ struct ListSettingsView: View {
 
             Section("Farbe") {
                 ColorGrid(selection: $draft.color)
+            }
+
+            Section("Kategorie") {
+                Picker("Kategorie", selection: $draft.categoryID) {
+                    Text("Keine").tag(UUID?.none)
+                    ForEach(categories) { category in
+                        Text(category.displayName).tag(Optional(category.id))
+                    }
+                }
+                Button("Neue Kategorie …") {
+                    showNewCategory = true
+                }
             }
 
             Section {
@@ -142,6 +156,9 @@ struct ListSettingsView: View {
                 draft.weekday = Calendar.current.component(.weekday, from: draft.anchorDate)
             }
         }
+        .newCategoryAlert(isPresented: $showNewCategory) { category in
+            draft.categoryID = category.id
+        }
         .confirmationDialog("Liste löschen?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Liste löschen", role: .destructive) {
                 dismiss()
@@ -175,8 +192,10 @@ struct ListSettingsView: View {
             list.sortOrder = (lists.map(\.sortOrder).max() ?? -1) + 1
             context.insert(list)
             draft.apply(to: list)
+            list.category = categories.first { $0.id == draft.categoryID }
         case .edit(let list):
             draft.apply(to: list)
+            list.category = categories.first { $0.id == draft.categoryID }
         }
         try? context.save()
         dismiss()
@@ -196,6 +215,8 @@ struct ListDraft {
     var startTime = ListDraft.date(fromMinutes: 8 * 60)
     var notificationEnabled = false
     var liveActivityEnabled = false
+    /// Kategorie, `nil` = keine
+    var categoryID: UUID?
 
     init(kind: ListKind = .routine) {
         recurrence = kind.defaultRecurrence
@@ -213,6 +234,7 @@ struct ListDraft {
         startTime = Self.date(fromMinutes: list.startTimeMinutes ?? 8 * 60)
         notificationEnabled = list.notificationEnabled
         liveActivityEnabled = list.liveActivityEnabled
+        categoryID = list.category?.id
     }
 
     var trimmedName: String {

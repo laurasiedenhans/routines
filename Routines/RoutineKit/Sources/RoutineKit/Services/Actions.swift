@@ -63,11 +63,32 @@ public extension ModelContext {
         }
     }
 
-    /// Löscht alle Listen, To-dos und Einträge (Entwicklerbereich).
+    /// Löscht alle Listen, Kategorien, To-dos und Einträge (Entwicklerbereich).
     func deleteAllRoutineData() throws {
         try delete(model: TaskRecord.self)
         try delete(model: RoutineTask.self)
         try delete(model: RoutineList.self)
+        try delete(model: ListCategory.self)
         try save()
+    }
+
+    // MARK: - Kategorien
+
+    /// Neue Kategorie, standardmäßig ans Ende (Reihenfolge nach Erstellen).
+    @discardableResult
+    func addCategory(_ name: String, emoji: String = "", at date: Date = Date()) -> ListCategory {
+        let existing = (try? fetch(FetchDescriptor<ListCategory>())) ?? []
+        let nextOrder = (existing.map(\.sortOrder).max() ?? -1) + 1
+        let category = ListCategory(name: name, emoji: emoji, sortOrder: nextOrder, createdAt: date)
+        insert(category)
+        return category
+    }
+
+    /// Löscht nur die Kategorie. Ihre Listen bleiben erhalten und sind danach ohne Kategorie.
+    func deleteCategory(_ category: ListCategory) {
+        for list in category.lists ?? [] {
+            list.category = nil
+        }
+        delete(category)
     }
 }

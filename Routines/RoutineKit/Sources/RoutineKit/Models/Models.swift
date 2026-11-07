@@ -31,6 +31,9 @@ public final class RoutineList {
     @Relationship(deleteRule: .cascade, inverse: \RoutineTask.list)
     public var tasks: [RoutineTask]? = []
 
+    /// Kategorie, `nil` = ohne Kategorie
+    public var category: ListCategory?
+
     public init(
         name: String = "",
         emoji: String = "✅",

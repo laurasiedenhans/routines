@@ -2,13 +2,17 @@ import SwiftUI
 import SwiftData
 import RoutineKit
 
-/// Startbildschirm: Tageskarte, aktive Listen und darunter einklappbar die geplanten Listen.
+/// Startbildschirm (iPad/Mac): Tageskarte, aktive Listen ohne Kategorie, die Kategorien
+/// und darunter einklappbar die geplanten Listen.
 struct HomeView: View {
     @Binding var selection: UUID?
 
     @Environment(AppClock.self) private var clock
     @Environment(AppSettings.self) private var settings
     @Query(sort: \RoutineList.sortOrder) private var lists: [RoutineList]
+    @Query(sort: \ListCategory.sortOrder) private var categories: [ListCategory]
+    @State private var categoryUI = CategoryUIState()
+    @State private var showNewCategory = false
     @State private var showNewList = false
     @State private var showSettings = false
     @State private var showPlanned = false
@@ -31,6 +35,7 @@ struct HomeView: View {
         let planned = lists
             .filter { engine.period(for: $0.rule, containing: now) == nil }
             .sorted { $0.anchorDate < $1.anchorDate }
+        let grouped = CategoryGrouping.make(active, categories: categories)
 
         List(selection: $selection) {
             if !lists.isEmpty {
@@ -41,16 +46,40 @@ struct HomeView: View {
                 }
             }
 
-            if !active.isEmpty {
+            if !grouped.uncategorized.isEmpty {
                 Section("Listen") {
-                    ForEach(active) { list in
+                    ForEach(grouped.uncategorized) { list in
                         NavigationLink(value: list.id) {
                             ListRow(list: list, status: ListStatus(list: list, now: now, engine: engine))
                         }
+                        .id("none-\(list.id)")
                     }
-                    .onMove { source, destination in
-                        move(active: active, planned: planned, from: source, to: destination)
+                    .onMove { reorder(grouped.uncategorized, from: $0, to: $1) }
+                }
+            }
+
+            ForEach(grouped.groups) { group in
+                CategorySection(
+                    category: group.category,
+                    count: group.lists.count,
+                    percent: CategoryProgress.percent(of: group.lists.map { ListStatus(list: $0, now: now, engine: engine) }),
+                    isExpanded: settings.expandedBinding(for: group.category),
+                    onEditEmoji: { categoryUI.emojiFor = group.category },
+                    onReorder: { categoryUI.showOrder = true },
+                    onDelete: { categoryUI.deleting = group.category }
+                ) {
+                    if group.lists.isEmpty {
+                        Text("Noch leer. Ordne Listen in ihren Einstellungen dieser Kategorie zu.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
+                    ForEach(group.lists) { list in
+                        NavigationLink(value: list.id) {
+                            ListRow(list: list, status: ListStatus(list: list, now: now, engine: engine))
+                        }
+                        .id("\(group.id)-\(list.id)")
+                    }
+                    .onMove { reorder(group.lists, from: $0, to: $1) }
                 }
             }
 
@@ -102,13 +131,16 @@ struct HomeView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showNewList = true
+                Menu {
+                    Button("Neue Liste", systemImage: "checklist") { showNewList = true }
+                    Button("Neue Kategorie", systemImage: "folder") { showNewCategory = true }
                 } label: {
-                    Label("Neue Liste", systemImage: "plus")
+                    Label("Hinzufügen", systemImage: "plus")
                 }
             }
         }
+        .categoryDialogs($categoryUI)
+        .newCategoryAlert(isPresented: $showNewCategory)
         .sheet(isPresented: $showNewList) {
             NavigationStack {
                 ListSettingsView(mode: .create(.routine))
@@ -128,15 +160,6 @@ struct HomeView: View {
         lists.filter(\.isRingEligible).map(\.ringCandidate)
     }
 
-    /// Sortiert die aktiven Listen um. Geplante Listen behalten ihre Reihenfolge dahinter.
-    private func move(active: [RoutineList], planned: [RoutineList], from source: IndexSet, to destination: Int) {
-        var reordered = active
-        reordered.move(fromOffsets: source, toOffset: destination)
-        let plannedInOrder = planned.sorted { $0.sortOrder < $1.sortOrder }
-        for (index, list) in (reordered + plannedInOrder).enumerated() {
-            list.sortOrder = index
-        }
-    }
 }
 
 /// Eine Zeile in der Listenübersicht.

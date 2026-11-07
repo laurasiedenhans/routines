@@ -68,6 +68,14 @@ public enum Theme {
         public static var swipeThreshold: CGFloat { 40 }
     }
 
+    /// Kategorie-Überschriften in den Übersichten
+    public enum Category {
+        /// Breite des Löschen-Buttons, der beim Wischen nach links erscheint
+        public static var deleteWidth: CGFloat { 84 }
+        /// Mindestweg, ab dem der Löschen-Button offen bleibt
+        public static var swipeThreshold: CGFloat { 40 }
+    }
+
     /// Eingabe über der Tastatur
     public enum Keyboard {
         /// Abstand zwischen Eingabezeile (inkl. „Immer / Einmalig“) und Tastatur samt Vorschlagsleiste

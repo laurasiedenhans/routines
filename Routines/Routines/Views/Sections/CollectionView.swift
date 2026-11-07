@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 import RoutineKit
 
-/// Bereich „Routinen“ oder „Listen“: aktuelle Einträge, darunter einklappbar „Geplant“
-/// und (nur bei Listen) „Abgeschlossen“ mit „Alle löschen“.
+/// Bereich „Routinen“ oder „Listen“: aktuelle Einträge ohne Kategorie, darunter die Kategorien
+/// (einklappbar), darunter einklappbar „Geplant“ und (nur bei Listen) „Abgeschlossen“ mit „Alle löschen“.
 struct CollectionView: View {
     let kind: ListKind
 
@@ -11,6 +11,8 @@ struct CollectionView: View {
     @Environment(AppClock.self) private var clock
     @Environment(AppSettings.self) private var settings
     @Query(sort: \RoutineList.sortOrder) private var lists: [RoutineList]
+    @Query(sort: \ListCategory.sortOrder) private var categories: [ListCategory]
+    @State private var categoryUI = CategoryUIState()
     @State private var showPlanned = false
     @State private var showCompleted = false
     @State private var confirmDeleteCompleted = false
@@ -38,13 +40,40 @@ struct CollectionView: View {
             .filter { statuses[$0.id]?.isActive == false }
             .sorted { $0.anchorDate < $1.anchorDate }
 
+        let grouped = CategoryGrouping.make(current, categories: categories)
+
         List {
-            if !current.isEmpty {
+            if !grouped.uncategorized.isEmpty {
                 Section {
-                    ForEach(current) { list in
+                    ForEach(grouped.uncategorized) { list in
                         row(for: list, status: statuses[list.id])
+                            .id("none-\(list.id)")
                     }
-                    .onMove { reorder(current, from: $0, to: $1) }
+                    .onMove { reorder(grouped.uncategorized, from: $0, to: $1) }
+                }
+            }
+
+            ForEach(grouped.groups) { group in
+                CategorySection(
+                    category: group.category,
+                    count: group.lists.count,
+                    percent: CategoryProgress.percent(of: group.lists.compactMap { statuses[$0.id] }),
+                    isExpanded: settings.expandedBinding(for: group.category),
+                    onEditEmoji: { categoryUI.emojiFor = group.category },
+                    onReorder: { categoryUI.showOrder = true },
+                    onDelete: { categoryUI.deleting = group.category }
+                ) {
+                    if group.lists.isEmpty {
+                        Text("Noch leer. Ordne Routinen und Listen in ihren Einstellungen dieser Kategorie zu.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(group.lists) { list in
+                        // Eigene Identität je Gruppe: beim Wechsel der Kategorie bleibt keine alte Zeile stehen.
+                        row(for: list, status: statuses[list.id])
+                            .id("\(group.id)-\(list.id)")
+                    }
+                    .onMove { reorder(group.lists, from: $0, to: $1) }
                 }
             }
 
@@ -72,8 +101,9 @@ struct CollectionView: View {
         }
         .navigationTitle(kind.title)
         .settingsToolbar()
+        .categoryDialogs($categoryUI)
         .overlay {
-            if mine.isEmpty {
+            if mine.isEmpty, grouped.groups.isEmpty {
                 ContentUnavailableView {
                     Label(kind == .routine ? "Noch keine Routinen" : "Noch keine Listen", systemImage: "checklist")
                 } description: {

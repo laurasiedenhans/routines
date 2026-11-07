@@ -42,6 +42,11 @@ public final class AppSettings {
         didSet { save() }
     }
 
+    /// Eingeklappte Kategorien (bleiben beim nächsten Öffnen eingeklappt)
+    public private(set) var collapsedCategoryIDs: Set<UUID> {
+        didSet { save() }
+    }
+
     /// Ausgewählte Listen je Ringstil (Schlüssel = `RingStyle.rawValue`).
     private var selections: [String: [UUID]] {
         didSet { save() }
@@ -63,6 +68,7 @@ public final class AppSettings {
         self.completedListRetention = stored?.completedListRetention ?? .never
         self.appearance = stored?.appearance ?? .system
         self.accentColorRaw = stored?.accentColorRaw ?? ListColor.blue.rawValue
+        self.collapsedCategoryIDs = Set(stored?.collapsedCategoryIDs ?? [])
         self.selections = stored?.selections ?? [:]
         self.seen = stored?.seen ?? [:]
     }
@@ -76,6 +82,20 @@ public final class AppSettings {
         let defaults = UserDefaults(suiteName: name) ?? .standard
         defaults.removePersistentDomain(forName: name)
         return defaults
+    }
+
+    // MARK: - Kategorien
+
+    public func isCollapsed(_ categoryID: UUID) -> Bool {
+        collapsedCategoryIDs.contains(categoryID)
+    }
+
+    public func setCollapsed(_ collapsed: Bool, for categoryID: UUID) {
+        if collapsed {
+            collapsedCategoryIDs.insert(categoryID)
+        } else {
+            collapsedCategoryIDs.remove(categoryID)
+        }
     }
 
     // MARK: - Ringauswahl
@@ -130,6 +150,7 @@ public final class AppSettings {
         var completedListRetention: ListRetention?
         var appearance: AppAppearance?
         var accentColorRaw: String?
+        var collapsedCategoryIDs: [UUID]?
     }
 
     private func save() {
@@ -139,7 +160,8 @@ public final class AppSettings {
             seen: seen,
             completedListRetention: completedListRetention,
             appearance: appearance,
-            accentColorRaw: accentColorRaw
+            accentColorRaw: accentColorRaw,
+            collapsedCategoryIDs: Array(collapsedCategoryIDs)
         )
         if let data = try? JSONEncoder().encode(stored) {
             defaults.set(data, forKey: Self.storageKey)

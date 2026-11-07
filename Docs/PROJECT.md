@@ -160,6 +160,8 @@ CloudKit rules that are followed **from the start**:
 
     @Relationship(deleteRule: .cascade, inverse: \RoutineTask.list)
     var tasks: [RoutineTask]? = []
+
+    var category: ListCategory?            // nil = no category
 }
 
 @Model final class RoutineTask {
@@ -181,6 +183,17 @@ CloudKit rules that are followed **from the start**:
     var kindRaw: String = "completed"      // completed | skipped
     var createdAt: Date = Date()
     var task: RoutineTask?
+}
+
+@Model final class ListCategory {
+    var id: UUID = UUID()
+    var name: String = ""
+    var emoji: String = ""                 // empty = no emoji
+    var sortOrder: Int = 0                 // new categories at the end
+    var createdAt: Date = Date()
+
+    @Relationship(deleteRule: .nullify, inverse: \RoutineList.category)
+    var lists: [RoutineList]? = []         // deleting a category keeps its lists
 }
 ```
 
@@ -210,7 +223,7 @@ routines/                              Git repository
     ├── Routines.xcodeproj
     ├── RoutineKit/                    local Swift package ("backend")
     │   ├── Sources/RoutineKit/
-    │   │   ├── Models/                SwiftData models
+    │   │   ├── Models/                SwiftData models (RoutineList, RoutineTask, TaskRecord, ListCategory)
     │   │   ├── Recurrence/            RecurrenceEngine (pure logic)
     │   │   ├── Services/              ListStatus, TaskVisibility, actions (ModelContext extension)
     │   │   ├── DayRing/               RingStyle, RingSelectionPolicy, DayRingSummary
@@ -250,19 +263,21 @@ routines/                              Git repository
   - Toggle: size, line width
   - Animations (duration/spring for checking off, moving)
   - Period strip: chip height, radius, dot size, swipe threshold
+  - Category headers: delete button width, swipe threshold
+  - Keyboard: gap between the input row (incl. "Immer / Einmalig") and the keyboard
 - Components such as `ProgressRing`, `ListProgressBar` and `CheckToggle` get their default values from the `Theme` but can be overridden per call.
 
 ### 7.0a Navigation (iPhone)
 - **Bottom navigation bar** in the iOS 26 style, not a continuous bar: two Liquid Glass containers (`GlassEffectContainer`), aligned to the edges, growing towards the centre.
   - **Left:** group with three sections (icon + text, icons are placeholders): **Heute** (Today – daily dashboard, default), **Routinen** (Routines), **Listen** (Lists). The active section is highlighted.
-  - **Right:** separate round **"+"** button. On the overview screens it creates whatever fits the section: Today/Routines → "Neue Routine" (new routine), Lists → "Neue Liste" (new list). Always the same form, just with a matching preselection (recurrence daily or none). **Inside an open list** it opens the input row instead, exactly like "Aufgabe hinzufügen" (add task) (`QuickAddCenter`).
+  - **Right:** separate round **"+"** button. On the overview screens it opens a small menu: whatever fits the section (Today/Routines → "Neue Routine" (new routine), Lists → "Neue Liste" (new list)) or "Neue Kategorie" (new category). Always the same form, just with a matching preselection (recurrence daily or none). **Inside an open list** it opens the input row instead, exactly like "Aufgabe hinzufügen" (add task) (`QuickAddCenter`).
   - The bar is hidden while the keyboard is shown.
 - **Routine vs. list:** no separate field. Routine = recurrence ≠ none, list = without recurrence. Changing the recurrence moves an entry between the sections.
 - **Today (daily dashboard):** daily card with the ring (ring selection from the settings), below it "Heute fällig" (due today) = all daily routines (including "every n days") whose period starts today, regardless of the ring selection. No weekly, monthly, yearly or one-off lists. Customisable later.
-- **Routines / Lists:** current entries, below them a collapsible "Geplant (n)" (planned, next first); for lists additionally a collapsible "Abgeschlossen (n)" (completed – all to-dos done).
+- **Routines / Lists:** current entries without a category, then the categories (see 7.0c), below them a collapsible "Geplant (n)" (planned, next first); for lists additionally a collapsible "Abgeschlossen (n)" (completed – all to-dos done).
 - **Settings:** gear icon at the top right in all three sections.
 - **Liquid Glass on list containers:** rejected (tried and reverted). SwiftUI offers no API for a glass background on whole `List` sections, only per row; rebuilding without `List` loses reordering and swiping. Apple also intends Liquid Glass for the floating navigation/control layer (tab bar, toolbars, buttons, sheets), not for content such as lists. Glass therefore stays on the daily card and the navigation bar.
-- **iPad/Mac:** unchanged for now (sidebar with all lists, `HomeView`), will be redesigned later.
+- **iPad/Mac:** sidebar with all lists (`HomeView`), grouped by category like on the iPhone; will be redesigned later.
 
 ### 7.0b Cleaning up one-off lists
 - **Detail view of a one-off list:** "Alle löschen" (delete all, with confirmation) in the header of "Erledigt (n)" (done) – permanently deletes all completed to-dos. Routines don't have this button.
@@ -271,6 +286,17 @@ routines/                              Git repository
 - **Automatic:** setting "Abgeschlossene löschen" (delete completed): never (default) / 1 day / 3 days / 1 week / 2 weeks / 1 month. The deadline counts from the last checked-off to-do (`CompletedListCleanup`, no model change). Cleanup runs when the app opens, at the day change and when the setting changes. Completed lists show "Wird in n Tagen gelöscht" (will be deleted in n days).
 - Whole lists **can't** be deleted by swiping (no trash yet, protection against accidental deletion).
 - Deletion is permanent. An archive for statistics on one-off lists can be added later (optional field `archivedAt`), but would only cover lists from its introduction onwards.
+
+### 7.0c Categories
+- Routines and lists can be sorted into **categories** (e.g. "💪 Workout"), **one category per list**, assigned in the list settings (picker "Kategorie" + "Neue Kategorie …").
+- A category can contain routines and lists. It appears in "Routinen" and in "Listen", each time only with the matching entries. Completely empty (new) categories appear in both, so they are visible after creating them.
+- **Order on the page:** entries without a category → categories → "Geplant" → "Abgeschlossen". Planned and completed lists appear only there, not in their category.
+- **Look:** a collapsible group like "Erledigt", with an optional emoji. The number of entries stands in brackets after the name, like "Erledigt (3)", e.g. "💪 Workout (3)". Collapsed, the header also shows the progress in percent on the right, e.g. "45 %": all to-dos of the lists in their current period added up (2/4 + 3/6 = 50 %), not the average of the lists. Collapsed state is remembered (`AppSettings.collapsedCategoryIDs`).
+- **Editing:** tap the name to rename (like tasks, empty keeps the old name), tap the emoji to choose one, long press for a menu (emoji, rename, "Kategorien ordnen", delete).
+- **Order:** by creation (new ones at the end). Reordering in "Kategorien ordnen" by dragging (variant A: SwiftUI `List` can't move whole sections or move rows between sections). Routines and lists can be reordered by dragging within their group.
+- **Deleting:** swipe the header to the left (with confirmation) or in "Kategorien ordnen". The routines and lists stay and lose their category.
+- Every list appears exactly once: in its category or without a category, never both.
+- **Not (yet):** dragging lists into another category (only via settings), several categories per list, grouping on "Heute".
 
 ### 7.1 Home screen
 - **Top:** compact **daily card** (Liquid Glass): small ring on the left (~92 pt), text on the right ("Heute", "x von y täglichen To-dos" / x of y daily to-dos, "Als Nächstes: <list> · <start time>" / up next).
@@ -429,7 +455,7 @@ List with a start time: triggers **on the first day of each period at the start 
 
 | Level | Where | How |
 |---|---|---|
-| Unit tests | `RoutineKit/Tests` (Swift Testing) | Scheme "RoutineKit", destination "My Mac", ⌘U. Fixed time zone Europe/Berlin. Covered: recurrence logic (month anchor, leap year, daylight saving time, intervals, period index, naming by majority), ring selection, visibility, emoji input. |
+| Unit tests | `RoutineKit/Tests` (Swift Testing) | Scheme "RoutineKit", destination "My Mac", ⌘U. Fixed time zone Europe/Berlin. Covered: recurrence logic (month anchor, leap year, daylight saving time, intervals, period index, naming by majority), ring selection, visibility, emoji input, categories (progress, order, deleting keeps lists). |
 | Previews | every view | `previewEnvironment()` with in-memory sample data |
 | Simulator with sample data | Scheme "Routines (sampleData)" | Launch argument `-sampleData`: fresh in-memory database + separate settings on every launch, real data untouched |
 | Developer section | Settings (debug only) | Time travel (+1 h, +1 day, 23:59, reset), add sample data, delete all data |
@@ -450,6 +476,8 @@ List with a start time: triggers **on the first day of each period at the start 
 | 🦷 Zahnarzt | yearly from 29 Feb 2024 | leap year |
 | 📦 Umzug | no recurrence | one-off list, deleting without confirmation |
 | 🇪🇸 Spanischkurs | daily, starts in 5 days | "Startet am …", not checkable |
+
+Categories in the sample data: "💪 Fitness" (Training, Meditation – routines only) and "🏠 Zuhause" (Haushalt, Pflanzen gießen and the list Umzug – mixed).
 
 ---
 
