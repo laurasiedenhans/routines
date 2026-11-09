@@ -75,6 +75,8 @@ public final class RoutineTask {
     public var deletedAt: Date? = nil
     /// Gesetzt = To-do gilt nur in diesem einen Zeitraum („Einmalig“).
     public var oneOffPeriodKey: String? = nil
+    /// Fälligkeitsdatum (nur der Tag zählt, 00:00 Ortszeit). Nur für einmalige To-dos, siehe `DueDates`.
+    public var dueDate: Date? = nil
     public var list: RoutineList?
 
     @Relationship(deleteRule: .cascade, inverse: \TaskRecord.task)

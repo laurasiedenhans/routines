@@ -9,6 +9,7 @@ struct HomeView: View {
 
     @Environment(AppClock.self) private var clock
     @Environment(AppSettings.self) private var settings
+    @Environment(\.modelContext) private var context
     @Query(sort: \RoutineList.sortOrder) private var lists: [RoutineList]
     @Query(sort: \ListCategory.sortOrder) private var categories: [ListCategory]
     @State private var categoryUI = CategoryUIState()
@@ -27,9 +28,11 @@ struct HomeView: View {
         let summary = DayRingSummary.make(
             lists: lists,
             selection: settings.selection(for: settings.ringStyle),
+            todoItem: DueDates.ringItem(lists: lists, color: settings.todoColor, now: now, engine: engine),
             now: now,
             engine: engine
         )
+        let todos = DueDates.openEntries(lists: lists, now: now, engine: engine)
         let active = lists.filter { engine.period(for: $0.rule, containing: now) != nil }
         // Geplante Listen: die nächste zuerst
         let planned = lists
@@ -43,6 +46,19 @@ struct HomeView: View {
                     DayProgressCard(summary: summary, style: settings.ringStyle)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
+                }
+            }
+
+            if !todos.isEmpty {
+                Section("To-dos") {
+                    ForEach(todos) { entry in
+                        DueTodoRow(entry: entry) {
+                            withAnimation(Theme.Motion.check) {
+                                context.complete(entry.task, in: entry.period, at: now)
+                            }
+                            try? context.save()
+                        }
+                    }
                 }
             }
 
@@ -169,6 +185,8 @@ struct ListRow: View {
     /// Ersetzt den Fortschrittsbalken, z. B. „Wird in 3 Tagen gelöscht“.
     var footnote: String? = nil
 
+    @Environment(AppClock.self) private var clock
+
     var body: some View {
         HStack(spacing: Theme.Spacing.m) {
             ListIcon(emoji: list.emoji, color: list.color.color)
@@ -189,6 +207,12 @@ struct ListRow: View {
                         .foregroundStyle(.secondary)
                 } else if status.isActive {
                     ListProgressBar(fraction: status.fraction, color: list.color.color)
+                    let overdue = DueDates.overdueCount(in: list, now: clock.now)
+                    if overdue > 0 {
+                        Text("\(overdue) überfällig")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.red)
+                    }
                 } else {
                     Text("Startet am \(RecurrenceFormatting.startDate(list.anchorDate))")
                         .font(.caption)

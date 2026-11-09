@@ -451,6 +451,7 @@ struct ListDetailView: View {
             isDone: isDone,
             color: color,
             isEnabled: isEnabled,
+            allowsDueDate: DueDates.allowsDueDate(recurrence: list.recurrence, oneOffPeriodKey: task.oneOffPeriodKey),
             isEditing: editingTaskID == task.id,
             focus: $focus,
             onToggle: { toggle(task, in: period) },
@@ -585,6 +586,8 @@ struct TaskRow: View {
     let isDone: Bool
     let color: Color
     var isEnabled = true
+    /// Einmaliges To-do: kann ein Fälligkeitsdatum haben
+    var allowsDueDate = false
     let isEditing: Bool
     var focus: FocusState<TaskFocus?>.Binding
     let onToggle: () -> Void
@@ -592,6 +595,7 @@ struct TaskRow: View {
     let onEndEditing: () -> Void
 
     @State private var draft = ""
+    @State private var showDatePicker = false
 
     var body: some View {
         HStack(spacing: Theme.Spacing.m) {
@@ -614,6 +618,14 @@ struct TaskRow: View {
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("Zum Bearbeiten tippen")
                 }
+                if isEditing, allowsDueDate {
+                    DueDateChips(dueDate: dueDateBinding, color: color) {
+                        showDatePicker = true
+                    }
+                    .padding(.vertical, Theme.Spacing.xs)
+                } else if allowsDueDate, let dueDate = task.dueDate {
+                    DueDateLabel(dueDate: dueDate, isDone: isDone)
+                }
                 if task.oneOffPeriodKey != nil {
                     Text("Einmalig")
                         .font(.caption)
@@ -629,6 +641,17 @@ struct TaskRow: View {
             guard isEditing, old == .task(task.id), new != .task(task.id) else { return }
             commit()
         }
+        .sheet(isPresented: $showDatePicker) {
+            DueDatePickerSheet(dueDate: dueDateBinding)
+        }
+    }
+
+    /// Fälligkeitsdatum direkt am To-do (gespeichert wird beim Beenden der Bearbeitung).
+    private var dueDateBinding: Binding<Date?> {
+        Binding(
+            get: { task.dueDate },
+            set: { task.dueDate = $0 }
+        )
     }
 
     /// Übernimmt den neuen Titel. Leerer Titel: alter Text bleibt.
@@ -663,6 +686,8 @@ struct AddTaskRow: View {
     @Environment(AppClock.self) private var clock
     @State private var title = ""
     @State private var isOneOff = false
+    @State private var dueDate: Date?
+    @State private var showDatePicker = false
 
     var body: some View {
         Group {
@@ -700,13 +725,22 @@ struct AddTaskRow: View {
                             .foregroundStyle(.secondary)
                             .padding(.bottom, Theme.Spacing.xs)
                     }
+
+                    // Fälligkeitsdatum nur für einmalige To-dos
+                    if allowsDueDate {
+                        DueDateChips(dueDate: $dueDate, color: color) {
+                            showDatePicker = true
+                        }
+                        .padding(.bottom, Theme.Spacing.xs)
+                    }
                 }
                 .onAppear {
                     isOneOff = isFuture
                     focus.wrappedValue = .newTask
                 }
                 .onChange(of: focus.wrappedValue) { _, newValue in
-                    guard newValue != .newTask else { return }
+                    // Kalender offen: Eingabe nicht schließen, danach geht es weiter
+                    guard newValue != .newTask, !showDatePicker else { return }
                     // Nach Return holt sich das Feld den Fokus sofort zurück: dann nicht schließen.
                     DispatchQueue.main.async {
                         if focus.wrappedValue != .newTask { finish() }
@@ -726,6 +760,16 @@ struct AddTaskRow: View {
         .onChange(of: period?.key) { _, _ in
             isOneOff = isFuture
         }
+        .sheet(isPresented: $showDatePicker, onDismiss: {
+            if isEditing { focus.wrappedValue = .newTask }
+        }) {
+            DueDatePickerSheet(dueDate: $dueDate)
+        }
+    }
+
+    /// Listen ohne Wiederholung immer, Routinen nur bei „Einmalig“.
+    private var allowsDueDate: Bool {
+        list.recurrence == .none || (isRepeating && (isOneOff || isPast))
     }
 
     /// Wiederholende Liste mit Zeitraum. Bei Listen ohne Wiederholung gibt es keinen nächsten Zeitraum.
@@ -749,8 +793,9 @@ struct AddTaskRow: View {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            context.addTask(text, to: list, oneOffPeriodKey: oneOffKey, at: clock.now)
+            context.addTask(text, to: list, oneOffPeriodKey: oneOffKey, dueDate: allowsDueDate ? dueDate : nil, at: clock.now)
             title = ""
+            dueDate = nil
         }
         try? context.save()
     }
@@ -759,6 +804,7 @@ struct AddTaskRow: View {
     private func finish() {
         add()
         isOneOff = isFuture
+        dueDate = nil
         withAnimation(Theme.Motion.check) { isEditing = false }
     }
 }

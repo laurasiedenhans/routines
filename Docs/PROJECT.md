@@ -171,6 +171,7 @@ CloudKit rules that are followed **from the start**:
     var createdAt: Date = Date()
     var deletedAt: Date? = nil             // soft delete ("all future")
     var oneOffPeriodKey: String? = nil     // set = only in this period
+    var dueDate: Date? = nil               // due date (day only), one-off tasks only
     var list: RoutineList?
 
     @Relationship(deleteRule: .cascade, inverse: \TaskRecord.task)
@@ -273,7 +274,7 @@ routines/                              Git repository
   - **Right:** separate round **"+"** button. On the overview screens it opens a small menu: whatever fits the section (Today/Routines → "Neue Routine" (new routine), Lists → "Neue Liste" (new list)) or "Neue Kategorie" (new category). Always the same form, just with a matching preselection (recurrence daily or none). **Inside an open list** it opens the input row instead, exactly like "Aufgabe hinzufügen" (add task) (`QuickAddCenter`).
   - The bar is hidden while the keyboard is shown.
 - **Routine vs. list:** no separate field. Routine = recurrence ≠ none, list = without recurrence. Changing the recurrence moves an entry between the sections.
-- **Today (daily dashboard):** daily card with the ring (ring selection from the settings), below it "Heute fällig" (due today) = all daily routines (including "every n days") whose period starts today, regardless of the ring selection. No weekly, monthly, yearly or one-off lists. Customisable later.
+- **Today (daily dashboard):** daily card with the ring (ring selection from the settings), below it "Heute fällig" (due today) = all daily routines (including "every n days") whose period starts today, regardless of the ring selection. No weekly, monthly, yearly or one-off lists. Below that the section **"To-dos"**: open one-off to-dos that are due today or overdue (see 7.2a), overdue first, otherwise in their own order (lists, then to-dos), each with a tinted label showing its list's emoji and name. They can be checked off right there. Not grouped by category. Customisable later.
 - **Routines / Lists:** current entries without a category, then the categories (see 7.0c), below them a collapsible "Geplant (n)" (planned, next first); for lists additionally a collapsible "Abgeschlossen (n)" (completed – all to-dos done).
 - **Settings:** gear icon at the top right in all three sections.
 - **Liquid Glass on list containers:** rejected (tried and reverted). SwiftUI offers no API for a glass background on whole `List` sections, only per row; rebuilding without `List` loses reordering and swiping. Apple also intends Liquid Glass for the floating navigation/control layer (tab bar, toolbars, buttons, sheets), not for content such as lists. Glass therefore stays on the daily card and the navigation bar.
@@ -351,6 +352,15 @@ routines/                              Git repository
 - Order can be changed via drag & drop (`sortOrder`).
 - **Top right: pencil** ("Liste bearbeiten" / edit list) → list settings.
 
+### 7.2a Due dates
+- **Only one-off to-dos** can have a due date: all to-dos in lists without recurrence and "Einmalig" to-dos in routines. Routines themselves are already "due" through their recurrence.
+- **Day only**, no time. Overdue = from the day after the due date. (`DueDates` in RoutineKit)
+- **Display:** below the title with a calendar icon: "Heute", "Morgen", "Fr 20.11." (with year if not this year), overdue in red as "Überfällig · Mo 02.11.". Completed to-dos keep the date in grey.
+- **Setting:** while editing a to-do (tap the title) and in the input row for new to-dos, chips appear below: "Heute", "Morgen", "Nächste Woche" (next Monday), "Datum …" (graphical calendar sheet) and ✕ to remove. In routines only when "Einmalig" is selected.
+- **Overviews:** list rows show "n überfällig" in red below the progress bar.
+- **Ring:** "Fällige To-dos" can be selected in the settings like its own list (never added automatically, counts towards the style's maximum, appears last). It counts the to-dos due today or overdue; done = checked off today. Its colour is chosen in the settings ("Farbe der To-dos", menu with the palette, default red).
+- Later: notifications on the due date.
+
 ### 7.3 List settings (sheet)
 - Name
 - Emoji (text field limited to one emoji + grid with suggestions; SwiftUI has no native emoji picker)
@@ -371,6 +381,7 @@ Same form as the settings, as a sheet from the home screen.
   - **Ring style:** simple ring / segments / nested rings (picker with a small preview). Default: segments.
   - **Lists in the ring:** below it all selectable lists (daily and every n days, with rhythm info) with checkmarks for the chosen style, hint "x von max. 5 ausgewählt" (x of max. 5 selected); further checkmarks are disabled once the maximum is reached.
   - Stored as `ringSelection: [RingStyle: [UUID]]` (list IDs) in `AppSettings`.
+  - Below the lists: **"Fällige To-dos"** (placeholder ID `DueDates.ringID`) and the menu **"Farbe der To-dos"** (see 7.2a).
 - **Appearance:** system / light / dark (segmented control, default: system), implemented via `preferredColorScheme`. Also applied inside the settings sheet so it switches immediately.
 - **Accent colour:** same colour picker as for lists (default: blue), implemented via `.tint()`. Applies to the simple ring, the "+", the navigation, toggles and buttons. Views use `.tint` instead of `Color.accentColor`.
 - **Candidates for later:** defaults for new lists (colour, recurrence), notifications on/off globally, statistics, about the app.
@@ -455,7 +466,7 @@ List with a start time: triggers **on the first day of each period at the start 
 
 | Level | Where | How |
 |---|---|---|
-| Unit tests | `RoutineKit/Tests` (Swift Testing) | Scheme "RoutineKit", destination "My Mac", ⌘U. Fixed time zone Europe/Berlin. Covered: recurrence logic (month anchor, leap year, daylight saving time, intervals, period index, naming by majority), ring selection, visibility, emoji input, categories (progress, order, deleting keeps lists). |
+| Unit tests | `RoutineKit/Tests` (Swift Testing) | Scheme "RoutineKit", destination "My Mac", ⌘U. Fixed time zone Europe/Berlin. Covered: recurrence logic (month anchor, leap year, daylight saving time, intervals, period index, naming by majority), ring selection, visibility, emoji input, categories (progress, order, deleting keeps lists), due dates (status, order on Today, ring counting, overdue count). |
 | Previews | every view | `previewEnvironment()` with in-memory sample data |
 | Simulator with sample data | Scheme "Routines (sampleData)" | Launch argument `-sampleData`: fresh in-memory database + separate settings on every launch, real data untouched |
 | Developer section | Settings (debug only) | Time travel (+1 h, +1 day, 23:59, reset), add sample data, delete all data |
@@ -476,6 +487,8 @@ List with a start time: triggers **on the first day of each period at the start 
 | 🦷 Zahnarzt | yearly from 29 Feb 2024 | leap year |
 | 📦 Umzug | no recurrence | one-off list, deleting without confirmation |
 | 🇪🇸 Spanischkurs | daily, starts in 5 days | "Startet am …", not checkable |
+
+Due dates in the sample data: Umzug has one overdue to-do, one due today, one in 4 days and one without a date; Morgenroutine has the one-off "Paket abholen" due today.
 
 Categories in the sample data: "💪 Fitness" (Training, Meditation – routines only) and "🏠 Zuhause" (Haushalt, Pflanzen gießen and the list Umzug – mixed).
 

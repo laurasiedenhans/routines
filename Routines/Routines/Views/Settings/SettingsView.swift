@@ -78,6 +78,56 @@ struct SettingsView: View {
                     .disabled(!isSelected && !settings.canSelectMore(for: style))
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
+
+                // Fällige To-dos wie eine eigene Liste
+                let todosSelected = settings.isSelected(DueDates.ringID, for: style)
+                Button {
+                    settings.toggle(DueDates.ringID, for: style)
+                } label: {
+                    HStack(spacing: Theme.Spacing.m) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: Theme.Icon.smallSize * 0.5, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: Theme.Icon.smallSize, height: Theme.Icon.smallSize)
+                            .background(settings.todoColor.color, in: Circle())
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                            Text("Fällige To-dos")
+                                .foregroundStyle(Color.primary)
+                            Text("Heute fällig und überfällig")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if todosSelected {
+                            Image(systemName: "checkmark")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.tint)
+                        }
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .disabled(!todosSelected && !settings.canSelectMore(for: style))
+                .accessibilityAddTraits(todosSelected ? .isSelected : [])
+
+                Picker(selection: $settings.todoColor) {
+                    ForEach(ColorPalette.groups) { group in
+                        Section(group.name) {
+                            ForEach(group.colors) { color in
+                                Text(color.displayName).tag(color)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: Theme.Spacing.m) {
+                        Circle()
+                            .fill(settings.todoColor.color)
+                            .frame(width: Theme.Icon.smallSize * 0.5, height: Theme.Icon.smallSize * 0.5)
+                            .frame(width: Theme.Icon.smallSize)
+                        Text("Farbe der To-dos")
+                    }
+                }
+                .pickerStyle(.menu)
             } header: {
                 Text("Listen im Ring")
             } footer: {

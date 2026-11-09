@@ -76,6 +76,16 @@ public enum Theme {
         public static var swipeThreshold: CGFloat { 40 }
     }
 
+    /// Fälligkeitsdaten
+    public enum DueDate {
+        /// Höhe der Knöpfe „Heute / Morgen / …“
+        public static var chipHeight: CGFloat { 30 }
+        /// Hintergrund nicht gewählter Knöpfe
+        public static var chipOpacity: Double { 0.12 }
+        /// Hintergrund des Listen-Labels in der Listenfarbe
+        public static var tagOpacity: Double { 0.15 }
+    }
+
     /// Eingabe über der Tastatur
     public enum Keyboard {
         /// Abstand zwischen Eingabezeile (inkl. „Immer / Einmalig“) und Tastatur samt Vorschlagsleiste

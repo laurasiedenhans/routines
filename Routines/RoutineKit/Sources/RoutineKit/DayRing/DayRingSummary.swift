@@ -61,18 +61,21 @@ public struct DayRingSummary: Sendable {
     }
 
     /// Nur Listen, die ausgewählt **und** heute fällig sind, zählen.
+    /// Ist `DueDates.ringID` ausgewählt, kommen die fälligen To-dos (`todoItem`) als letzter Eintrag dazu.
     public static func make(
         lists: [RoutineList],
         selection: [UUID],
+        todoItem: DayRingItem? = nil,
         now: Date,
         engine: RecurrenceEngine = .current
     ) -> DayRingSummary {
         let selected = Set(selection)
+        let includesTodos = selected.contains(DueDates.ringID)
         let candidates = lists
             .filter { selected.contains($0.id) && $0.isRingEligible }
             .sorted { $0.sortOrder < $1.sortOrder }
 
-        guard !candidates.isEmpty else {
+        guard !candidates.isEmpty || includesTodos else {
             return DayRingSummary(items: [], state: .noSelection)
         }
 
@@ -89,6 +92,9 @@ public struct DayRingSummary: Sendable {
                 total: status.total,
                 startTimeMinutes: list.startTimeMinutes
             ))
+        }
+        if includesTodos, let todoItem, todoItem.total > 0 {
+            items.append(todoItem)
         }
 
         return DayRingSummary(items: items, state: items.isEmpty ? .nothingDue : .ready)

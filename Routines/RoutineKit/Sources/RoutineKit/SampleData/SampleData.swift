@@ -93,6 +93,7 @@ public enum SampleData {
         }
         if let period = engine.period(for: morning.rule, containing: now) {
             let parcel = RoutineTask(title: "Paket abholen", sortOrder: 10, createdAt: now, oneOffPeriodKey: period.key)
+            parcel.dueDate = day(0)
             context.insert(parcel)
             parcel.list = morning
         }
@@ -164,8 +165,12 @@ public enum SampleData {
 
         // 11 · Ohne Wiederholung (einmalige Checkliste)
         let move = makeList("Umzug", "📦", .brown, .none, anchor: day(-10))
-        let moveTasks = addTasks(["Kartons besorgen", "Nachsendeauftrag stellen", "Internet ummelden"], to: move)
+        let moveTasks = addTasks(["Kartons besorgen", "Nachsendeauftrag stellen", "Internet ummelden", "Schlüsselübergabe", "Umzugshelfer fragen"], to: move)
         record(.completed, moveTasks[0], in: move, on: day(-8))
+        // Fälligkeiten: überfällig, heute, in 4 Tagen, ohne Datum
+        moveTasks[1].dueDate = day(-3)
+        moveTasks[2].dueDate = day(0)
+        moveTasks[3].dueDate = day(4)
 
         // 12 · Starttag in der Zukunft („Startet am …“)
         let course = makeList("Spanischkurs", "🇪🇸", .purple, .daily,

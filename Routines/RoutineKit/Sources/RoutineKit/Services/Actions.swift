@@ -40,10 +40,12 @@ public extension ModelContext {
         _ title: String,
         to list: RoutineList,
         oneOffPeriodKey: String? = nil,
+        dueDate: Date? = nil,
         at date: Date = Date()
     ) -> RoutineTask {
         let nextOrder = ((list.tasks ?? []).map(\.sortOrder).max() ?? -1) + 1
         let task = RoutineTask(title: title, sortOrder: nextOrder, createdAt: date, oneOffPeriodKey: oneOffPeriodKey)
+        task.dueDate = dueDate
         insert(task)
         task.list = list
         return task

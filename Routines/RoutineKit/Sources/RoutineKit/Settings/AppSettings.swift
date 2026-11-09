@@ -37,6 +37,16 @@ public final class AppSettings {
         set { accentColorRaw = newValue.rawValue }
     }
 
+    /// Farbe der fälligen To-dos im Tagesring. Gespeichert als `ListColor.rawValue`.
+    public var todoColorRaw: String {
+        didSet { save() }
+    }
+
+    public var todoColor: ListColor {
+        get { ListColor(rawValue: todoColorRaw) ?? .red }
+        set { todoColorRaw = newValue.rawValue }
+    }
+
     /// Abgeschlossene einmalige Listen löschen nach … (Standard: nie)
     public var completedListRetention: ListRetention {
         didSet { save() }
@@ -68,6 +78,7 @@ public final class AppSettings {
         self.completedListRetention = stored?.completedListRetention ?? .never
         self.appearance = stored?.appearance ?? .system
         self.accentColorRaw = stored?.accentColorRaw ?? ListColor.blue.rawValue
+        self.todoColorRaw = stored?.todoColorRaw ?? ListColor.red.rawValue
         self.collapsedCategoryIDs = Set(stored?.collapsedCategoryIDs ?? [])
         self.selections = stored?.selections ?? [:]
         self.seen = stored?.seen ?? [:]
@@ -123,13 +134,16 @@ public final class AppSettings {
     }
 
     /// Gleicht die Auswahl aller Stile mit den aktuell wählbaren Listen ab.
-    public func reconcile(candidates: [RingCandidate]) {
+    public func reconcile(candidates listCandidates: [RingCandidate]) {
+        // „Fällige To-dos“ sind immer wählbar, wie eine eigene Liste ganz am Ende.
+        let candidates = listCandidates + [RingCandidate(id: DueDates.ringID, interval: 1, sortOrder: Int.max)]
         var newSelections = selections
         var newSeen = seen
         for style in RingStyle.allCases {
+            // „Fällige To-dos“ werden nie automatisch aufgenommen, nur von Hand: gelten als schon bekannt.
             let result = RingSelectionPolicy.reconcile(
                 selected: selections[style.rawValue] ?? [],
-                seen: Set(seen[style.rawValue] ?? []),
+                seen: Set(seen[style.rawValue] ?? []).union([DueDates.ringID]),
                 candidates: candidates,
                 maxLists: style.maxLists
             )
@@ -151,6 +165,7 @@ public final class AppSettings {
         var appearance: AppAppearance?
         var accentColorRaw: String?
         var collapsedCategoryIDs: [UUID]?
+        var todoColorRaw: String?
     }
 
     private func save() {
@@ -161,7 +176,8 @@ public final class AppSettings {
             completedListRetention: completedListRetention,
             appearance: appearance,
             accentColorRaw: accentColorRaw,
-            collapsedCategoryIDs: Array(collapsedCategoryIDs)
+            collapsedCategoryIDs: Array(collapsedCategoryIDs),
+            todoColorRaw: todoColorRaw
         )
         if let data = try? JSONEncoder().encode(stored) {
             defaults.set(data, forKey: Self.storageKey)
